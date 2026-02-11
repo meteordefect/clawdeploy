@@ -61,6 +61,33 @@ services:
       control-api:
         condition: service_healthy
 
+  agent-bridge:
+    build:
+      context: ./agent-bridge
+      dockerfile: Dockerfile
+    container_name: clawdeploy-agent-bridge
+    restart: unless-stopped
+    environment:
+      CONTROL_API_URL: http://control-api:3001/api
+      AGENT_NAME: ${AGENT_NAME:-Local OpenClaw Agent}
+      AGENT_DESCRIPTION: ${AGENT_DESCRIPTION:-OpenClaw agent with full skill suite}
+      OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL:-ws://host.docker.internal:18789}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_MODE: ${OPENCLAW_MODE:-gateway}
+      OPENCLAW_SKILLS_PATH: ${OPENCLAW_SKILLS_PATH:-/openclaw/skills}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      OPENCLAW_MODEL: ${OPENCLAW_MODEL:-moonshot/kimi-k2.5}
+      HEARTBEAT_INTERVAL_MS: ${HEARTBEAT_INTERVAL_MS:-30000}
+      COMMAND_POLL_INTERVAL_MS: ${COMMAND_POLL_INTERVAL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - clawdeploy
+    depends_on:
+      control-api:
+        condition: service_healthy
+    profiles:
+      - agent-bridge
+
 volumes:
   postgres-data:
     driver: local

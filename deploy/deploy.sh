@@ -237,6 +237,55 @@ cmd_build_openclaw() {
     log_success "OpenClaw image built: openclaw/openclaw:${OPENCLAW_VERSION}"
 }
 
+# Agent Bridge commands
+cmd_agent_bridge_build() {
+    log_info "Building agent bridge image..."
+    docker compose build agent-bridge
+    log_success "Agent bridge image built"
+}
+
+cmd_agent_bridge_start() {
+    log_info "Starting agent bridge..."
+    check_env
+    docker compose --profile agent-bridge up -d agent-bridge
+    log_success "Agent bridge started"
+    log_info "View logs: ./deploy.sh agent-bridge-logs"
+}
+
+cmd_agent_bridge_stop() {
+    log_info "Stopping agent bridge..."
+    docker compose stop agent-bridge
+    log_success "Agent bridge stopped"
+}
+
+cmd_agent_bridge_restart() {
+    log_info "Restarting agent bridge..."
+    docker compose restart agent-bridge
+    log_success "Agent bridge restarted"
+}
+
+cmd_agent_bridge_logs() {
+    log_info "Showing agent bridge logs (Ctrl+C to exit)..."
+    docker compose logs -f agent-bridge
+}
+
+cmd_agent_bridge_status() {
+    log_info "Agent bridge status:"
+    docker compose ps agent-bridge
+    echo ""
+    log_info "Recent logs:"
+    docker compose logs --tail=20 agent-bridge
+}
+
+cmd_list_agents() {
+    log_info "Fetching registered agents..."
+    check_env
+    load_env
+    
+    # Call control API to list agents
+    curl -s http://localhost:3001/api/agents | python3 -m json.tool || log_error "Failed to fetch agents"
+}
+
 cmd_destroy() {
     log_warn "This will destroy ALL infrastructure and data!"
     read -p "Type 'destroy' to confirm: " confirm
@@ -271,6 +320,15 @@ ${BLUE}Ansible Commands:${NC}
   dashboard         Restart Dashboard
   nginx             Update Nginx configuration
   migrate           Run database migrations
+
+${BLUE}Agent Bridge Commands:${NC}
+  agent-bridge-build    Build agent bridge image
+  agent-bridge-start    Start agent bridge service
+  agent-bridge-stop     Stop agent bridge service
+  agent-bridge-restart  Restart agent bridge service
+  agent-bridge-logs     View agent bridge logs (live)
+  agent-bridge-status   Check agent bridge status
+  list-agents           List all registered agents
   
 ${BLUE}Maintenance Commands:${NC}
   status            Check all services health
@@ -283,10 +341,12 @@ ${BLUE}Destructive Commands:${NC}
   destroy           Tear down everything (DESTRUCTIVE)
 
 ${BLUE}Examples:${NC}
-  ./deploy.sh init              # Initial setup
-  ./deploy.sh status            # Check health
-  ./deploy.sh api               # Restart API only
-  ./deploy.sh backup            # Create backup
+  ./deploy.sh init                    # Initial setup
+  ./deploy.sh agent-bridge-start      # Start local agent
+  ./deploy.sh list-agents             # View registered agents
+  ./deploy.sh status                  # Check health
+  ./deploy.sh api                     # Restart API only
+  ./deploy.sh backup                  # Create backup
 
 ${YELLOW}Note:${NC} Make sure .env is configured before running any commands.
 EOF
@@ -294,25 +354,32 @@ EOF
 
 # Main command router
 case "${1:-help}" in
-    init)             cmd_init ;;
-    full)             cmd_full ;;
-    terraform-init)   cmd_terraform_init ;;
-    terraform-plan)   cmd_terraform_plan ;;
-    terraform-apply)  cmd_terraform_apply ;;
-    terraform-destroy) cmd_terraform_destroy ;;
-    deploy)           cmd_ansible_deploy ;;
-    config)           cmd_config ;;
-    api)              cmd_api ;;
-    dashboard)        cmd_dashboard ;;
-    nginx)            cmd_nginx ;;
-    migrate)          cmd_ansible_migrate ;;
-    status)           cmd_ansible_status ;;
-    backup)           cmd_ansible_backup ;;
-    ssh)              cmd_ssh ;;
-    logs)             cmd_logs ;;
-    build-openclaw)   cmd_build_openclaw ;;
-    destroy)          cmd_destroy ;;
-    help|--help|-h)   cmd_help ;;
+    init)                 cmd_init ;;
+    full)                 cmd_full ;;
+    terraform-init)       cmd_terraform_init ;;
+    terraform-plan)       cmd_terraform_plan ;;
+    terraform-apply)      cmd_terraform_apply ;;
+    terraform-destroy)    cmd_terraform_destroy ;;
+    deploy)               cmd_ansible_deploy ;;
+    config)               cmd_config ;;
+    api)                  cmd_api ;;
+    dashboard)            cmd_dashboard ;;
+    nginx)                cmd_nginx ;;
+    migrate)              cmd_ansible_migrate ;;
+    status)               cmd_ansible_status ;;
+    backup)               cmd_ansible_backup ;;
+    ssh)                  cmd_ssh ;;
+    logs)                 cmd_logs ;;
+    build-openclaw)       cmd_build_openclaw ;;
+    agent-bridge-build)   cmd_agent_bridge_build ;;
+    agent-bridge-start)   cmd_agent_bridge_start ;;
+    agent-bridge-stop)    cmd_agent_bridge_stop ;;
+    agent-bridge-restart) cmd_agent_bridge_restart ;;
+    agent-bridge-logs)    cmd_agent_bridge_logs ;;
+    agent-bridge-status)  cmd_agent_bridge_status ;;
+    list-agents)          cmd_list_agents ;;
+    destroy)              cmd_destroy ;;
+    help|--help|-h)       cmd_help ;;
     *)
         log_error "Unknown command: $1"
         cmd_help

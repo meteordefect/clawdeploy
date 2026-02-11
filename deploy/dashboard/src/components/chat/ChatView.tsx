@@ -127,7 +127,6 @@ export function ChatView() {
                 {msg.role === 'assistant' && (
                   <div className="mb-1">
                     <Badge
-                      status="default"
                       variant="outline"
                       className="text-xs px-2 py-0.5 bg-green-100 text-green-800 border-green-200"
                     >
