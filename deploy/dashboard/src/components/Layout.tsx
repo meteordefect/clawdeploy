@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { BarChart3, Bot, Target, FolderOpen, MessageSquare, ScrollText, Settings as SettingsIcon } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,17 +9,17 @@ interface LayoutProps {
 interface NavItem {
   path: string;
   label: string;
-  icon: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'Overview', icon: '📊' },
-  { path: '/agents', label: 'Agents', icon: '🤖' },
-  { path: '/missions', label: 'Missions', icon: '🎯' },
-  { path: '/files', label: 'Files', icon: '📁' },
-  { path: '/sessions', label: 'Sessions', icon: '💬' },
-  { path: '/events', label: 'Events', icon: '📜' },
-  { path: '/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/', label: 'Overview', icon: BarChart3 },
+  { path: '/agents', label: 'Agents', icon: Bot },
+  { path: '/missions', label: 'Missions', icon: Target },
+  { path: '/files', label: 'Files', icon: FolderOpen },
+  { path: '/sessions', label: 'Sessions', icon: MessageSquare },
+  { path: '/events', label: 'Events', icon: ScrollText },
+  { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -36,6 +37,7 @@ export function Layout({ children }: LayoutProps) {
         <nav className="flex-1 px-4 py-6 space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
@@ -46,9 +48,10 @@ export function Layout({ children }: LayoutProps) {
                     : 'text-secondary hover:text-primary hover:bg-white/50'
                 }`}
               >
-                <span className={`text-lg transition-transform duration-200 group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
-                  {item.icon}
-                </span>
+                <Icon 
+                  size={18} 
+                  className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-70'}`}
+                />
                 <span>{item.label}</span>
               </Link>
             );
@@ -72,6 +75,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex justify-around items-center p-2">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
@@ -80,9 +84,10 @@ export function Layout({ children }: LayoutProps) {
                   isActive ? 'text-primary' : 'text-tertiary hover:text-secondary'
                 }`}
               >
-                <span className={`text-xl transition-transform ${isActive ? '-translate-y-0.5' : ''}`}>
-                  {item.icon}
-                </span>
+                <Icon 
+                  size={20} 
+                  className={`transition-transform ${isActive ? '-translate-y-0.5' : ''}`}
+                />
                 <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
               </Link>
             );
