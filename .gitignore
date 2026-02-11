@@ -1,0 +1,52 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Terraform
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+deploy/terraform/terraform.tfstate
+deploy/terraform/terraform.tfstate.backup
+deploy/terraform/terraform.tfvars
+deploy/terraform/*.tfvars
+!deploy/terraform/*.tfvars.example
+
+# Ansible
+deploy/ansible/inventory.ini
+!deploy/ansible/inventory.ini.example
+deploy/ansible/*.retry
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backups
+backups/
+*.tar.gz
+*.sql
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.cache/

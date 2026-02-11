@@ -1,0 +1,58 @@
+upstream dashboard {
+    server localhost:3000;
+}
+
+upstream control_api {
+    server localhost:3001;
+}
+
+server {
+    listen 80;
+    server_name {{ lookup('env', 'DOMAIN') | default('_', true) }};
+
+    client_max_body_size 10M;
+
+    # Dashboard - requires basic auth
+    location / {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        
+        proxy_pass http://dashboard;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Agent endpoints - no basic auth, uses bearer token
+    location ~ ^/api/agents/(register|heartbeat) {
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/commands/(pending|[^/]+/(accept|result)) {
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # All other API endpoints - require basic auth
+    location /api/ {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    access_log /var/log/nginx/clawdeploy-access.log;
+    error_log /var/log/nginx/clawdeploy-error.log;
+}
