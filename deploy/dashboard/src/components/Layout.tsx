@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Bot, Target, FolderOpen, MessageSquare, ScrollText, Settings as SettingsIcon } from 'lucide-react';
+import { BarChart3, Bot, Target, FolderOpen, MessageSquare, ScrollText, Settings as SettingsIcon, Menu, X, LucideIcon } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ interface LayoutProps {
 interface NavItem {
   path: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 }
 
 const navItems: NavItem[] = [
@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-surface text-primary flex font-sans">
@@ -65,15 +66,79 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-surface">
-        <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 md:py-12">
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 py-3">
+            <h1 className="text-xl font-serif font-bold text-primary">ClawDeploy</h1>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 md:py-12 pb-24 md:pb-12">
           {children}
         </div>
       </main>
 
-      {/* Mobile Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 z-50 pb-safe">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div 
+            className="absolute top-0 right-0 h-full w-64 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-serif font-bold text-primary">Menu</h2>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <nav className="p-4 space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-gray-100 text-primary'
+                        : 'text-secondary hover:text-primary hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+              <p className="text-xs text-tertiary">ClawDeploy v3.0</p>
+              <p className="text-xs text-tertiary mt-1">© 2026 Friend Labs</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation - Quick Access */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 z-40 pb-safe">
         <div className="flex justify-around items-center p-2">
-          {navItems.slice(0, 5).map((item) => {
+          {navItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             return (
@@ -92,6 +157,13 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-xl transition-colors text-tertiary hover:text-secondary"
+          >
+            <Menu size={20} />
+            <span className="text-[10px] font-medium tracking-wide">More</span>
+          </button>
         </div>
       </nav>
     </div>

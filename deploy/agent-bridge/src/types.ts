@@ -7,6 +7,8 @@ export interface Config {
   openclawMode: 'gateway' | 'embedded';
   openclawSkillsPath: string;
   moonshotApiKey: string;
+  openaiApiKey: string;
+  zhipuApiKey: string;
   openclawModel: string;
   heartbeatIntervalMs: number;
   commandPollIntervalMs: number;

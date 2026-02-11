@@ -39,9 +39,14 @@ async function main() {
     console.log('✓ Heartbeat started\n');
 
     // Start command poller
+    const apiKey = config.zhipuApiKey || config.openaiApiKey || config.moonshotApiKey;
     const poller = new CommandPoller(
       apiClient,
-      config.commandPollIntervalMs
+      config.commandPollIntervalMs,
+      apiKey ? {
+        model: config.openclawModel,
+        apiKey: apiKey,
+      } : undefined
     );
     poller.start();
     console.log('✓ Command poller started\n');

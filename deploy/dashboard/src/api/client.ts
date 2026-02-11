@@ -25,6 +25,11 @@ export const api = {
   agents: {
     list: () => request<Agent[]>('/agents'),
     get: (id: string) => request<Agent>(`/agents/${id}`),
+    update: (id: string, data: { name?: string; description?: string }) =>
+      request<Agent>(`/agents/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
   },
   
   missions: {

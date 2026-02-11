@@ -27,10 +27,49 @@ router.post('/agents/register', async (req: Request, res: Response) => {
     return;
   }
   
-  const token = uuidv4();
   const ip = req.ip || req.socket.remoteAddress;
   
   try {
+    // Check if agent with same name and IP already exists
+    const existingAgents = await query<Agent>(
+      `SELECT id, name, token, description, status, created_at
+       FROM agents
+       WHERE name = $1 AND ip_address = $2
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [name, ip]
+    );
+    
+    if (existingAgents.length > 0) {
+      // Reuse existing agent - update its description and mark as offline (will come online on heartbeat)
+      await query(
+        `UPDATE agents 
+         SET description = $1, 
+             status = 'offline',
+             updated_at = now()
+         WHERE id = $2`,
+        [description || existingAgents[0].description, existingAgents[0].id]
+      );
+      
+      await query(
+        `INSERT INTO events (type, agent_id, data)
+         VALUES ($1, $2, $3)`,
+        ['agent.reconnected', existingAgents[0].id, { name, ip }]
+      );
+      
+      res.json({
+        agent_id: existingAgents[0].id,
+        token: existingAgents[0].token,
+        name: existingAgents[0].name,
+        status: 'offline',
+        created_at: existingAgents[0].created_at,
+        reconnected: true,
+      });
+      return;
+    }
+    
+    // Create new agent
+    const token = uuidv4();
     const result = await query<Agent>(
       `INSERT INTO agents (name, token, description, ip_address, status)
        VALUES ($1, $2, $3, $4, 'offline')
@@ -50,6 +89,7 @@ router.post('/agents/register', async (req: Request, res: Response) => {
       name: result[0].name,
       status: result[0].status,
       created_at: result[0].created_at,
+      reconnected: false,
     });
   } catch (err) {
     console.error('Agent registration error:', err);
@@ -141,6 +181,59 @@ router.get('/agents/:id', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Error fetching agent:', err);
     res.status(500).json({ error: 'Failed to fetch agent' });
+  }
+});
+
+router.patch('/agents/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { name, description } = req.body;
+  
+  if (!name && !description) {
+    res.status(400).json({ error: 'At least one field (name or description) is required' });
+    return;
+  }
+  
+  try {
+    const agents = await query<Agent>(
+      `SELECT id, name, description FROM agents WHERE id = $1`,
+      [id]
+    );
+    
+    if (agents.length === 0) {
+      res.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+    
+    const updatedName = name || agents[0].name;
+    const updatedDescription = description !== undefined ? description : agents[0].description;
+    
+    await query(
+      `UPDATE agents 
+       SET name = $1, 
+           description = $2,
+           updated_at = now()
+       WHERE id = $3`,
+      [updatedName, updatedDescription, id]
+    );
+    
+    await query(
+      `INSERT INTO events (type, agent_id, data)
+       VALUES ($1, $2, $3)`,
+      ['agent.updated', id, { name: updatedName, description: updatedDescription }]
+    );
+    
+    const updated = await query<Agent>(
+      `SELECT id, name, description, last_heartbeat, health, status,
+              ip_address, openclaw_version, created_at, updated_at
+       FROM agents
+       WHERE id = $1`,
+      [id]
+    );
+    
+    res.json(updated[0]);
+  } catch (err) {
+    console.error('Error updating agent:', err);
+    res.status(500).json({ error: 'Failed to update agent' });
   }
 });
 

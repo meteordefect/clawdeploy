@@ -1,10 +1,17 @@
+import { useState } from 'react';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
+import { Button } from '../components/Button';
+import { Modal } from '../components/Modal';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
+import type { Agent } from '../types';
 
 export function Agents() {
-  const { data: agents, loading, error } = usePolling(() => api.agents.list(), 5000);
+  const { data: agents, loading, error, refetch } = usePolling(() => api.agents.list(), 5000);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', description: '' });
+  const [saving, setSaving] = useState(false);
 
   const formatTimestamp = (timestamp?: string) => {
     if (!timestamp) return 'Never';
@@ -17,6 +24,37 @@ export function Agents() {
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
     if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
     return date.toLocaleString();
+  };
+
+  const handleEditClick = (agent: Agent) => {
+    setEditingAgent(agent);
+    setEditForm({
+      name: agent.name,
+      description: agent.description || '',
+    });
+  };
+
+  const handleCloseModal = () => {
+    setEditingAgent(null);
+    setEditForm({ name: '', description: '' });
+    setSaving(false);
+  };
+
+  const handleSave = async () => {
+    if (!editingAgent) return;
+    
+    setSaving(true);
+    try {
+      await api.agents.update(editingAgent.id, {
+        name: editForm.name,
+        description: editForm.description || undefined,
+      });
+      refetch();
+      handleCloseModal();
+    } catch (err) {
+      alert(`Failed to update agent: ${err}`);
+      setSaving(false);
+    }
   };
 
   if (loading && !agents) {
@@ -50,18 +88,28 @@ export function Agents() {
             <Card key={agent.id}>
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <div className="w-10 h-10 rounded-full bg-subtle flex items-center justify-center text-xl shadow-inner">
                         🤖
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h3 className="font-semibold text-lg text-primary">{agent.name}</h3>
                         {agent.description && (
                         <p className="text-sm text-secondary mt-0.5">{agent.description}</p>
                         )}
                     </div>
                   </div>
-                  <StatusBadge status={agent.status} />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditClick(agent)}
+                      className="text-xs"
+                    >
+                      ✏️ Edit
+                    </Button>
+                    <StatusBadge status={agent.status} />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm bg-subtle/50 p-4 rounded-xl border border-gray-100">
@@ -114,6 +162,59 @@ export function Agents() {
           </div>
         </Card>
       )}
+
+      <Modal
+        isOpen={!!editingAgent}
+        onClose={handleCloseModal}
+        title="Edit Agent"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="secondary"
+              onClick={handleCloseModal}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving || !editForm.name.trim()}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Agent Name
+            </label>
+            <input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+              placeholder="Enter agent name"
+              disabled={saving}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description (Optional)
+            </label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none resize-none"
+              placeholder="Enter agent description"
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

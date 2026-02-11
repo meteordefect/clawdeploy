@@ -108,7 +108,7 @@ export class ControlApiClient {
     }
   }
 
-  async reportCommandResult(commandId: string, result: any, exitCode: number): Promise<void> {
+  async reportCommandResult(commandId: string, result: any, status: 'completed' | 'failed'): Promise<void> {
     if (!this.agentToken) {
       throw new Error('Agent not registered.');
     }
@@ -117,8 +117,8 @@ export class ControlApiClient {
       await this.client.post(
         `/commands/${commandId}/result`,
         {
+          status,
           result,
-          exit_code: exitCode,
         },
         {
           headers: {
@@ -127,7 +127,7 @@ export class ControlApiClient {
         }
       );
 
-      console.log(`Reported result for command: ${commandId}`);
+      console.log(`Reported result for command: ${commandId} (${status})`);
     } catch (error: any) {
       console.error('Failed to report command result:', error.response?.data || error.message);
       throw error;

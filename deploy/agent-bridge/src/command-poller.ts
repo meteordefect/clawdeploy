@@ -1,14 +1,21 @@
 import type { ControlApiClient } from './control-api-client.js';
 import type { Command } from './types.js';
+import { LLMClient } from './llm-client.js';
 
 export class CommandPoller {
   private intervalId: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
+  private llmClient: LLMClient | null = null;
 
   constructor(
     private client: ControlApiClient,
-    private intervalMs: number
-  ) {}
+    private intervalMs: number,
+    llmConfig?: { model: string; apiKey: string }
+  ) {
+    if (llmConfig && llmConfig.apiKey) {
+      this.llmClient = new LLMClient(llmConfig);
+    }
+  }
 
   start(): void {
     console.log(`Starting command poller (interval: ${this.intervalMs}ms)`);
@@ -55,14 +62,18 @@ export class CommandPoller {
     try {
       await this.client.acceptCommand(command.id);
 
-      // TODO: Execute command via OpenClaw
-      // For now, just report success
-      const result = {
-        message: `Command ${command.type} executed successfully`,
-        payload: command.payload,
-      };
+      let result: any;
 
-      await this.client.reportCommandResult(command.id, result, 0);
+      if (command.type === 'openclaw.chat') {
+        result = await this.processChat(command);
+      } else {
+        result = {
+          message: `Command ${command.type} executed successfully`,
+          payload: command.payload,
+        };
+      }
+
+      await this.client.reportCommandResult(command.id, result, 'completed');
     } catch (error: any) {
       console.error(`Failed to process command ${command.id}:`, error.message);
       
@@ -70,11 +81,48 @@ export class CommandPoller {
         await this.client.reportCommandResult(
           command.id,
           { error: error.message },
-          1
+          'failed'
         );
       } catch (reportError) {
         console.error('Failed to report command failure');
       }
     }
+  }
+
+  private async processChat(command: Command): Promise<any> {
+    if (!this.llmClient) {
+      throw new Error('LLM client not configured - missing API key');
+    }
+
+    const { message, context } = command.payload;
+    
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      {
+        role: 'system',
+        content: 'You are a helpful AI assistant.',
+      },
+    ];
+
+    if (context) {
+      messages.push({
+        role: 'user',
+        content: context,
+      });
+    }
+
+    if (message) {
+      messages.push({
+        role: 'user',
+        content: message,
+      });
+    }
+
+    const response = await this.llmClient.chat(messages);
+
+    return {
+      message: 'Chat command executed successfully',
+      response,
+      query: { message, context },
+    };
   }
 }

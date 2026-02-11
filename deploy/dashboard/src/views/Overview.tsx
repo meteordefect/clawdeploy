@@ -1,13 +1,21 @@
+import { useState } from 'react';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
+import { Button } from '../components/Button';
+import { Modal } from '../components/Modal';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
+import type { Agent } from '../types';
 
 export function Overview() {
-  const { data: agents } = usePolling(() => api.agents.list(), 5000);
+  const { data: agents, refetch: refetchAgents } = usePolling(() => api.agents.list(), 5000);
   const { data: missions } = usePolling(() => api.missions.list(), 5000);
   const { data: events } = usePolling(() => api.events.list({ limit: 10 }), 10000);
   const { data: health } = usePolling(() => api.health(), 30000);
+  
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', description: '' });
+  const [saving, setSaving] = useState(false);
 
   const stats = {
     agents: {
@@ -21,6 +29,37 @@ export function Overview() {
     },
   };
 
+  const handleEditClick = (agent: Agent) => {
+    setEditingAgent(agent);
+    setEditForm({
+      name: agent.name,
+      description: agent.description || '',
+    });
+  };
+
+  const handleCloseModal = () => {
+    setEditingAgent(null);
+    setEditForm({ name: '', description: '' });
+    setSaving(false);
+  };
+
+  const handleSave = async () => {
+    if (!editingAgent) return;
+    
+    setSaving(true);
+    try {
+      await api.agents.update(editingAgent.id, {
+        name: editForm.name,
+        description: editForm.description || undefined,
+      });
+      refetchAgents();
+      handleCloseModal();
+    } catch (err) {
+      alert(`Failed to update agent: ${err}`);
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -28,55 +67,44 @@ export function Overview() {
         <p className="text-secondary mt-1 text-lg">System status and recent activity</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Compact Stats for Mobile, Full Cards for Desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
+        {/* Agents & System Health - Combined on Mobile */}
+        <Card>
+          <div className="flex flex-col h-full justify-between">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-secondary uppercase tracking-wide">Agents</div>
+                <div className="text-4xl font-serif font-bold text-primary mt-2">{stats.agents.total}</div>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-success"></span>
+                  <div className="text-sm font-medium text-success">{stats.agents.online} online</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-medium text-secondary uppercase tracking-wide mb-2">System</div>
+                <StatusBadge status={health?.status === 'ok' ? 'online' : 'offline'} className="text-xs py-1 px-2" />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Missions - Combined Active & Completed */}
         <Card>
           <div className="flex flex-col h-full justify-between">
             <div>
-              <div className="text-sm font-medium text-secondary uppercase tracking-wide">Total Agents</div>
-              <div className="text-4xl font-serif font-bold text-primary mt-2">{stats.agents.total}</div>
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-success"></span>
-              <div className="text-sm font-medium text-success">{stats.agents.online} online</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-           <div className="flex flex-col h-full justify-between">
-            <div>
-              <div className="text-sm font-medium text-secondary uppercase tracking-wide">Total Missions</div>
+              <div className="text-sm font-medium text-secondary uppercase tracking-wide">Missions</div>
               <div className="text-4xl font-serif font-bold text-primary mt-2">{stats.missions.total}</div>
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-accent"></span>
-              <div className="text-sm font-medium text-accent">{stats.missions.active} active</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-           <div className="flex flex-col h-full justify-between">
-            <div>
-              <div className="text-sm font-medium text-secondary uppercase tracking-wide">Completed Missions</div>
-              <div className="text-4xl font-serif font-bold text-success mt-2">{stats.missions.completed}</div>
-            </div>
-             <div className="mt-4 flex items-center gap-2">
-               <span className="text-sm text-tertiary">Lifetime total</span>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-           <div className="flex flex-col h-full justify-between">
-            <div>
-              <div className="text-sm font-medium text-secondary uppercase tracking-wide">System Health</div>
-              <div className="mt-2">
-                <StatusBadge status={health?.status === 'ok' ? 'online' : 'offline'} className="text-sm py-1 px-3" />
+              <div className="mt-3 flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-accent"></span>
+                  <div className="text-sm font-medium text-accent">{stats.missions.active} active</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-success"></span>
+                  <div className="text-sm font-medium text-success">{stats.missions.completed} done</div>
+                </div>
               </div>
-            </div>
-            <div className="mt-4 text-xs font-mono text-tertiary border-t border-gray-100 pt-2">
-              DB: {health?.db || 'unknown'}
             </div>
           </div>
         </Card>
@@ -87,17 +115,26 @@ export function Overview() {
           {agents && agents.length > 0 ? (
             <div className="divide-y divide-gray-100">
               {agents.slice(0, 5).map((agent) => (
-                <div key={agent.id} className="flex items-center justify-between p-4 hover:bg-subtle/30 transition-colors">
-                  <div className="flex items-center gap-3">
+                <div key={agent.id} className="flex items-center justify-between p-4 hover:bg-subtle/30 transition-colors group">
+                  <div className="flex items-center gap-3 flex-1">
                      <div className="w-8 h-8 rounded-full bg-subtle flex items-center justify-center text-lg border border-gray-100">
                         🤖
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-primary text-sm">{agent.name}</div>
                       <div className="text-xs text-secondary">{agent.openclaw_version || 'Unknown version'}</div>
                     </div>
                   </div>
-                  <StatusBadge status={agent.status} variant="dot" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditClick(agent)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-secondary hover:text-primary px-2 py-1 hover:bg-subtle rounded"
+                      title="Edit agent"
+                    >
+                      ✏️
+                    </button>
+                    <StatusBadge status={agent.status} variant="dot" />
+                  </div>
                 </div>
               ))}
               <div className="p-3 text-center border-t border-gray-50">
@@ -146,6 +183,59 @@ export function Overview() {
           )}
         </Card>
       </div>
+
+      <Modal
+        isOpen={!!editingAgent}
+        onClose={handleCloseModal}
+        title="Edit Agent"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="secondary"
+              onClick={handleCloseModal}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving || !editForm.name.trim()}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Agent Name
+            </label>
+            <input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+              placeholder="Enter agent name"
+              disabled={saving}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description (Optional)
+            </label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none resize-none"
+              placeholder="Enter agent description"
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
