@@ -237,7 +237,7 @@ cmd_build_openclaw() {
     log_success "OpenClaw image built: openclaw/openclaw:${OPENCLAW_VERSION}"
 }
 
-# Agent Bridge commands
+# Agent Bridge commands (local deployment)
 cmd_agent_bridge_build() {
     log_info "Building agent bridge image..."
     docker compose build agent-bridge
@@ -245,7 +245,7 @@ cmd_agent_bridge_build() {
 }
 
 cmd_agent_bridge_start() {
-    log_info "Starting agent bridge..."
+    log_info "Starting agent bridge (local)..."
     check_env
     docker compose --profile agent-bridge up -d agent-bridge
     log_success "Agent bridge started"
@@ -277,6 +277,39 @@ cmd_agent_bridge_status() {
     docker compose logs --tail=20 agent-bridge
 }
 
+# Remote agent bridge deployment (via Ansible)
+cmd_agent_bridge_deploy() {
+    log_info "Deploying agent bridge to remote server..."
+    check_env
+    load_env
+    cd ansible
+    ansible-playbook playbooks/site.yml --tags agent-bridge
+    cd ..
+    log_success "Agent bridge deployed to remote server"
+}
+
+cmd_agent_bridge_remote_logs() {
+    if [ ! -f ansible/inventory.ini ]; then
+        log_error "Ansible inventory not found. Run 'deploy.sh init' first."
+        exit 1
+    fi
+    
+    SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
+    log_info "Fetching agent bridge logs from $SERVER_IP..."
+    ssh root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f agent-bridge"
+}
+
+cmd_agent_bridge_remote_status() {
+    if [ ! -f ansible/inventory.ini ]; then
+        log_error "Ansible inventory not found. Run 'deploy.sh init' first."
+        exit 1
+    fi
+    
+    SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
+    log_info "Checking agent bridge status on $SERVER_IP..."
+    ssh root@$SERVER_IP "cd /opt/clawdeploy && docker compose ps agent-bridge"
+}
+
 cmd_list_agents() {
     log_info "Fetching registered agents..."
     check_env
@@ -304,7 +337,7 @@ ${BLUE}Usage:${NC}
   ./deploy.sh [command]
 
 ${BLUE}Setup Commands:${NC}
-  init              Fresh VPS → fully running control plane
+  init              Fresh VPS → fully running control plane + agent bridge
   full              Terraform plan + full Ansible redeploy
   
 ${BLUE}Terraform Commands:${NC}
@@ -321,13 +354,20 @@ ${BLUE}Ansible Commands:${NC}
   nginx             Update Nginx configuration
   migrate           Run database migrations
 
-${BLUE}Agent Bridge Commands:${NC}
-  agent-bridge-build    Build agent bridge image
-  agent-bridge-start    Start agent bridge service
-  agent-bridge-stop     Stop agent bridge service
-  agent-bridge-restart  Restart agent bridge service
-  agent-bridge-logs     View agent bridge logs (live)
-  agent-bridge-status   Check agent bridge status
+${BLUE}Agent Bridge - Same Server (VPS):${NC}
+  agent-bridge-deploy       Deploy agent bridge to VPS (with control plane)
+  agent-bridge-remote-logs  View agent bridge logs on VPS
+  agent-bridge-remote-status Check agent bridge status on VPS
+
+${BLUE}Agent Bridge - Local/Different Server:${NC}
+  agent-bridge-build    Build agent bridge image (local)
+  agent-bridge-start    Start agent bridge service (local)
+  agent-bridge-stop     Stop agent bridge service (local)
+  agent-bridge-restart  Restart agent bridge service (local)
+  agent-bridge-logs     View agent bridge logs (local)
+  agent-bridge-status   Check agent bridge status (local)
+
+${BLUE}Agent Management:${NC}
   list-agents           List all registered agents
   
 ${BLUE}Maintenance Commands:${NC}
@@ -341,12 +381,20 @@ ${BLUE}Destructive Commands:${NC}
   destroy           Tear down everything (DESTRUCTIVE)
 
 ${BLUE}Examples:${NC}
-  ./deploy.sh init                    # Initial setup
-  ./deploy.sh agent-bridge-start      # Start local agent
-  ./deploy.sh list-agents             # View registered agents
-  ./deploy.sh status                  # Check health
-  ./deploy.sh api                     # Restart API only
-  ./deploy.sh backup                  # Create backup
+  ${GREEN}# Deploy everything to VPS (control plane + agent bridge):${NC}
+  ./deploy.sh init
+
+  ${GREEN}# Just deploy agent bridge to VPS:${NC}
+  ./deploy.sh agent-bridge-deploy
+  
+  ${GREEN}# Check agents on VPS:${NC}
+  ./deploy.sh agent-bridge-remote-status
+  ./deploy.sh list-agents
+
+  ${GREEN}# Deploy agent bridge on a different machine:${NC}
+  # 1. Copy deploy/agent-bridge/ to target machine
+  # 2. Configure .env with CONTROL_API_URL pointing to VPS
+  # 3. Run: ./deploy.sh agent-bridge-build && ./deploy.sh agent-bridge-start
 
 ${YELLOW}Note:${NC} Make sure .env is configured before running any commands.
 EOF
@@ -354,32 +402,35 @@ EOF
 
 # Main command router
 case "${1:-help}" in
-    init)                 cmd_init ;;
-    full)                 cmd_full ;;
-    terraform-init)       cmd_terraform_init ;;
-    terraform-plan)       cmd_terraform_plan ;;
-    terraform-apply)      cmd_terraform_apply ;;
-    terraform-destroy)    cmd_terraform_destroy ;;
-    deploy)               cmd_ansible_deploy ;;
-    config)               cmd_config ;;
-    api)                  cmd_api ;;
-    dashboard)            cmd_dashboard ;;
-    nginx)                cmd_nginx ;;
-    migrate)              cmd_ansible_migrate ;;
-    status)               cmd_ansible_status ;;
-    backup)               cmd_ansible_backup ;;
-    ssh)                  cmd_ssh ;;
-    logs)                 cmd_logs ;;
-    build-openclaw)       cmd_build_openclaw ;;
-    agent-bridge-build)   cmd_agent_bridge_build ;;
-    agent-bridge-start)   cmd_agent_bridge_start ;;
-    agent-bridge-stop)    cmd_agent_bridge_stop ;;
-    agent-bridge-restart) cmd_agent_bridge_restart ;;
-    agent-bridge-logs)    cmd_agent_bridge_logs ;;
-    agent-bridge-status)  cmd_agent_bridge_status ;;
-    list-agents)          cmd_list_agents ;;
-    destroy)              cmd_destroy ;;
-    help|--help|-h)       cmd_help ;;
+    init)                        cmd_init ;;
+    full)                        cmd_full ;;
+    terraform-init)              cmd_terraform_init ;;
+    terraform-plan)              cmd_terraform_plan ;;
+    terraform-apply)             cmd_terraform_apply ;;
+    terraform-destroy)           cmd_terraform_destroy ;;
+    deploy)                      cmd_ansible_deploy ;;
+    config)                      cmd_config ;;
+    api)                         cmd_api ;;
+    dashboard)                   cmd_dashboard ;;
+    nginx)                       cmd_nginx ;;
+    migrate)                     cmd_ansible_migrate ;;
+    status)                      cmd_ansible_status ;;
+    backup)                      cmd_ansible_backup ;;
+    ssh)                         cmd_ssh ;;
+    logs)                        cmd_logs ;;
+    build-openclaw)              cmd_build_openclaw ;;
+    agent-bridge-deploy)         cmd_agent_bridge_deploy ;;
+    agent-bridge-remote-logs)    cmd_agent_bridge_remote_logs ;;
+    agent-bridge-remote-status)  cmd_agent_bridge_remote_status ;;
+    agent-bridge-build)          cmd_agent_bridge_build ;;
+    agent-bridge-start)          cmd_agent_bridge_start ;;
+    agent-bridge-stop)           cmd_agent_bridge_stop ;;
+    agent-bridge-restart)        cmd_agent_bridge_restart ;;
+    agent-bridge-logs)           cmd_agent_bridge_logs ;;
+    agent-bridge-status)         cmd_agent_bridge_status ;;
+    list-agents)                 cmd_list_agents ;;
+    destroy)                     cmd_destroy ;;
+    help|--help|-h)              cmd_help ;;
     *)
         log_error "Unknown command: $1"
         cmd_help

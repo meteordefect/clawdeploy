@@ -92,6 +92,15 @@
           - "--exclude=node_modules"
           - "--exclude=dist"
 
+    - name: Copy Agent Bridge source
+      synchronize:
+        src: ../../agent-bridge/
+        dest: "{{ project_dir }}/agent-bridge/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=dist"
+
     - name: Install Nginx
       apt:
         name: nginx
@@ -134,8 +143,8 @@
       environment:
         DOCKER_BUILDKIT: "1"
 
-    - name: Start Docker Compose services
-      shell: cd {{ project_dir }} && docker compose up -d
+    - name: Start Docker Compose services (including agent-bridge)
+      shell: cd {{ project_dir }} && docker compose --profile agent-bridge up -d
       environment:
         COMPOSE_HTTP_TIMEOUT: "200"
 
