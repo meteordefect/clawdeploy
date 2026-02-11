@@ -1,12 +1,50 @@
+import React from 'react';
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'text' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export function Button({ children, variant = 'primary', className = '', ...props }: ButtonProps) {
+export function Button({ 
+  children, 
+  variant = 'primary', 
+  size = 'md',
+  className = '', 
+  ...props 
+}: ButtonProps) {
+  
+  const baseStyles = "inline-flex items-center justify-center font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+  
+  const variants = {
+    primary: "bg-primary text-white hover:bg-black shadow-sm",
+    secondary: "bg-white text-primary border border-gray-200 hover:bg-subtle hover:border-gray-300 shadow-sm",
+    outline: "bg-transparent text-primary border border-gray-300 hover:bg-subtle hover:border-gray-400",
+    text: "bg-transparent text-accent hover:text-accent-dark hover:underline p-0",
+    ghost: "bg-transparent text-secondary hover:bg-subtle hover:text-primary",
+  };
+
+  const sizes = {
+    sm: "text-xs px-3 py-1.5 rounded-lg",
+    md: "text-sm px-5 py-2.5 rounded-xl", // Matches ~14px vertical padding if font is small, adjusted for visual balance
+    lg: "text-base px-6 py-3.5 rounded-xl",
+  };
+
+  // Text variant shouldn't have standard padding/radius
+  if (variant === 'text') {
+    return (
+      <button
+        className={`${baseStyles} ${variants[variant]} ${className}`}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors ${className}`}
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
       {children}

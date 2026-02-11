@@ -25,7 +25,7 @@ export function Sessions() {
   if (loading && !sessions) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading sessions...</div>
+        <div className="text-tertiary">Loading sessions...</div>
       </div>
     );
   }
@@ -41,55 +41,55 @@ export function Sessions() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-serif font-bold text-gray-900">Sessions</h1>
-        <p className="text-gray-600 mt-1">OpenClaw session transcripts</p>
+        <h1 className="text-3xl font-serif font-bold text-primary">Sessions</h1>
+        <p className="text-secondary mt-1">OpenClaw session transcripts</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card title="Session List">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="Session List" noPadding className="h-full">
           {sessions && sessions.length > 0 ? (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="max-h-[600px] overflow-y-auto p-2 space-y-1">
               {sessions.map((session) => (
                 <button
                   key={session.id}
                   onClick={() => handleSelectSession(session.id)}
-                  className={`w-full text-left px-3 py-3 rounded border transition-colors ${
+                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-200 group ${
                     selectedSession === session.id
-                      ? 'bg-accent text-white border-accent'
-                      : 'hover:bg-gray-50 border-gray-200'
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'bg-white hover:bg-subtle border-gray-100 text-secondary hover:border-gray-200'
                   }`}
                 >
-                  <div className="font-medium text-sm">{session.id}</div>
-                  <div className="text-xs opacity-80 mt-1">
+                  <div className={`font-medium text-sm ${selectedSession === session.id ? 'text-white' : 'text-primary'}`}>{session.id}</div>
+                  <div className={`text-xs mt-1 ${selectedSession === session.id ? 'text-white/80' : 'text-tertiary'}`}>
                     {new Date(session.created).toLocaleString()}
                   </div>
-                  <div className="text-xs opacity-70 mt-1">
+                  <div className={`text-xs mt-1 ${selectedSession === session.id ? 'text-white/60' : 'text-tertiary'}`}>
                     {(session.size / 1024).toFixed(1)} KB
                   </div>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">No sessions found</div>
+            <div className="text-tertiary text-sm p-6 text-center">No sessions found</div>
           )}
         </Card>
 
-        <Card title={selectedSession || 'Select a session'} className="lg:col-span-2">
+        <Card title={selectedSession || 'Select a session'} className="lg:col-span-2 min-h-[600px]">
           {loadingSession ? (
-            <div className="text-gray-500">Loading session...</div>
+            <div className="text-tertiary flex items-center justify-center h-64">Loading session...</div>
           ) : sessionData ? (
-            <div className="space-y-4">
-              <div className="text-sm text-gray-600">
-                Created: {new Date(sessionData.created).toLocaleString()}
+            <div className="space-y-4 h-full flex flex-col">
+              <div className="text-sm text-secondary bg-subtle px-4 py-2 rounded-lg border border-gray-100 inline-block self-start">
+                Created: <span className="font-medium text-primary">{new Date(sessionData.created).toLocaleString()}</span>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <pre className="text-xs font-mono whitespace-pre-wrap">
+              <div className="bg-subtle/50 rounded-xl p-6 border border-gray-100 flex-1 overflow-auto">
+                <pre className="text-xs font-mono whitespace-pre-wrap text-primary">
                   {JSON.stringify(sessionData.content, null, 2)}
                 </pre>
               </div>
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">Select a session to view transcript</div>
+            <div className="text-tertiary text-sm flex items-center justify-center h-64">Select a session to view transcript</div>
           )}
         </Card>
       </div>

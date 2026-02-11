@@ -207,6 +207,8 @@ dashboard         → built from deploy/dashboard/, port 3000, depends on contro
 
 > Build the agent SDK and provisioning tooling for remote OpenClaw instances.
 
+**Status**: Superseded by Phase 6 (see AGENT_BRIDGE_PLAN.md)
+
 ### 5.1 Agent heartbeat client
 
 **New file**: `agent/heartbeat.ts` (or published npm package)
@@ -235,6 +237,42 @@ Build from `openclaw-source/` with the heartbeat client baked in:
 ```bash
 ./deploy.sh build-openclaw    # builds openclaw/openclaw:$OPENCLAW_VERSION
 ```
+
+---
+
+## Phase 6: OpenClaw Agent Bridge Integration
+
+> Full-featured agent bridge with skill discovery and multi-agent orchestration.
+
+**Detailed Plan**: See [AGENT_BRIDGE_PLAN.md](./AGENT_BRIDGE_PLAN.md)
+
+This phase implements:
+- **Agent Bridge Service**: Connects OpenClaw instances to control plane
+- **Skill Discovery**: Automatically discovers 60+ OpenClaw capabilities
+- **Command Execution**: Routes commands through OpenClaw's AI runtime
+- **Dashboard Integration**: Shows agent skills and enables skill-based routing
+- **Remote Provisioning**: Deploy agents to remote servers via Ansible
+
+**Key Components**:
+- `deploy/agent-bridge/` - Bridge service (TypeScript)
+- Skills parser for SKILL.md files
+- OpenClaw WebSocket/CLI client
+- Enhanced dashboard with skill browser
+- Ansible playbooks for remote agent deployment
+
+**Quick Start**:
+```bash
+# See AGENT_BRIDGE_PLAN.md for full details
+./deploy.sh agent-bridge build
+./deploy.sh agent-bridge start
+```
+
+**Benefits**:
+- Multiple OpenClaw agents orchestrated from one dashboard
+- Automatic skill discovery (no manual configuration)
+- Session management for multi-turn conversations
+- Real-time agent health and capabilities
+- Scalable to 10+ agents across servers
 
 ---
 

@@ -1,13 +1,21 @@
+import React from 'react';
+
 interface BadgeProps {
   children: React.ReactNode;
-  status?: string;
   variant?: 'outline' | 'solid';
   className?: string;
 }
 
-export function Badge({ children, className = '' }: BadgeProps) {
+export function Badge({ children, variant = 'solid', className = '' }: BadgeProps) {
+  const baseStyles = "inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors";
+  
+  const variants = {
+    solid: "bg-primary text-white shadow-sm",
+    outline: "bg-transparent text-secondary border border-gray-200"
+  };
+
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${className}`}>
+    <span className={`${baseStyles} ${variants[variant]} ${className}`}>
       {children}
     </span>
   );

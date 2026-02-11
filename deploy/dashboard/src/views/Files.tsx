@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card } from '../components/Card';
+import { Button } from '../components/Button';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
 
@@ -39,7 +40,7 @@ export function Files() {
   if (loading && !files) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading files...</div>
+        <div className="text-tertiary">Loading files...</div>
       </div>
     );
   }
@@ -55,22 +56,22 @@ export function Files() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-serif font-bold text-gray-900">Files</h1>
-        <p className="text-gray-600 mt-1">Browse and edit workspace files</p>
+        <h1 className="text-3xl font-serif font-bold text-primary">Files</h1>
+        <p className="text-secondary mt-1">Browse and edit workspace files</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card title="Workspace Files">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="Workspace Files" noPadding className="h-full">
           {files && files.length > 0 ? (
-            <div className="space-y-1 max-h-96 overflow-y-auto">
+            <div className="max-h-[500px] overflow-y-auto p-2 space-y-1">
               {files.map((file) => (
                 <button
                   key={file}
                   onClick={() => handleSelectFile(file)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors font-medium ${
                     selectedFile === file
-                      ? 'bg-accent text-white'
-                      : 'hover:bg-gray-100 text-gray-700'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'hover:bg-subtle text-secondary hover:text-primary'
                   }`}
                 >
                   {file}
@@ -78,31 +79,32 @@ export function Files() {
               ))}
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">No files found</div>
+            <div className="text-tertiary text-sm p-6 text-center">No files found</div>
           )}
         </Card>
 
-        <Card title={selectedFile || 'Select a file'} className="lg:col-span-2">
+        <Card title={selectedFile || 'Select a file'} className="lg:col-span-2 min-h-[500px]">
           {loadingFile ? (
-            <div className="text-gray-500">Loading file...</div>
+            <div className="text-tertiary flex items-center justify-center h-64">Loading file...</div>
           ) : selectedFile ? (
-            <div className="space-y-4">
+            <div className="space-y-4 h-full flex flex-col">
               <textarea
                 value={fileContent}
                 onChange={(e) => setFileContent(e.target.value)}
-                className="w-full h-96 px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-accent focus:border-transparent"
+                className="w-full flex-1 min-h-[400px] px-4 py-3 border border-gray-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-subtle/30 resize-none"
                 spellCheck={false}
               />
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">Select a file to view and edit</div>
+            <div className="text-tertiary text-sm flex items-center justify-center h-64">Select a file to view and edit</div>
           )}
         </Card>
       </div>

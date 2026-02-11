@@ -25,60 +25,69 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-surface flex">
-      <aside className="hidden md:flex flex-col w-60 bg-card border-r border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-serif font-bold text-accent">ClawDeploy</h1>
-          <p className="text-xs text-gray-500 mt-1">Control Plane v3.0</p>
+    <div className="min-h-screen bg-surface text-primary flex font-sans">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex flex-col w-64 bg-subtle border-r border-gray-200/60 sticky top-0 h-screen">
+        <div className="p-8 border-b border-gray-200/60">
+          <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">ClawDeploy</h1>
+          <p className="text-xs font-medium text-secondary mt-2 tracking-wide uppercase">Control Plane v3.0</p>
         </div>
         
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 px-4 py-6 space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
                   isActive
-                    ? 'bg-accent text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-white text-primary shadow-sm ring-1 ring-black/5'
+                    : 'text-secondary hover:text-primary hover:bg-white/50'
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
+                <span className={`text-lg transition-transform duration-200 group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
         
-        <div className="p-4 border-t border-gray-200 text-xs text-gray-500">
-          <p>© 2026 Friend Labs</p>
+        <div className="p-6 border-t border-gray-200/60">
+          <p className="text-xs text-tertiary font-medium">© 2026 Friend Labs</p>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto p-6">
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto bg-surface">
+        <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 md:py-12">
           {children}
         </div>
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-gray-200 flex justify-around p-2">
-        {navItems.slice(0, 5).map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
-                isActive ? 'text-accent' : 'text-gray-600'
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs">{item.label}</span>
-            </Link>
-          );
-        })}
+      {/* Mobile Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 z-50 pb-safe">
+        <div className="flex justify-around items-center p-2">
+          {navItems.slice(0, 5).map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-xl transition-colors ${
+                  isActive ? 'text-primary' : 'text-tertiary hover:text-secondary'
+                }`}
+              >
+                <span className={`text-xl transition-transform ${isActive ? '-translate-y-0.5' : ''}`}>
+                  {item.icon}
+                </span>
+                <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );

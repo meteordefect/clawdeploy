@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
+import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
@@ -48,16 +49,16 @@ export function Missions() {
           <h1 className="text-3xl font-serif font-bold text-gray-900">Missions</h1>
           <p className="text-gray-600 mt-1">High-level objectives and command queues</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-opacity-90 transition-colors"
+          variant={showCreateForm ? 'secondary' : 'primary'}
         >
           {showCreateForm ? 'Cancel' : 'New Mission'}
-        </button>
+        </Button>
       </div>
 
       {showCreateForm && (
-        <Card>
+        <Card title="Create New Mission">
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -67,7 +68,7 @@ export function Missions() {
                 type="text"
                 value={newMission.name}
                 onChange={(e) => setNewMission({ ...newMission, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
                 placeholder="e.g., Deploy to Production"
                 required
               />
@@ -79,18 +80,19 @@ export function Missions() {
               <textarea
                 value={newMission.description}
                 onChange={(e) => setNewMission({ ...newMission, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
                 placeholder="Optional description"
                 rows={3}
               />
             </div>
-            <button
-              type="submit"
-              disabled={creating}
-              className="px-4 py-2 bg-success text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
-            >
-              {creating ? 'Creating...' : 'Create Mission'}
-            </button>
+            <div className="flex justify-end pt-2">
+                <Button
+                type="submit"
+                disabled={creating}
+                >
+                {creating ? 'Creating...' : 'Create Mission'}
+                </Button>
+            </div>
           </form>
         </Card>
       )}
@@ -110,22 +112,22 @@ export function Missions() {
                   <StatusBadge status={mission.status} />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-500">Total Commands</div>
-                    <div className="font-medium text-gray-900">{mission.total_commands || 0}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
+                  <div className="bg-subtle p-3 rounded-lg">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Total Commands</div>
+                    <div className="font-medium text-gray-900 text-lg">{mission.total_commands || 0}</div>
                   </div>
-                  <div>
-                    <div className="text-gray-500">Completed</div>
-                    <div className="font-medium text-success">{mission.completed_commands || 0}</div>
+                  <div className="bg-subtle p-3 rounded-lg">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Completed</div>
+                    <div className="font-medium text-success text-lg">{mission.completed_commands || 0}</div>
                   </div>
-                  <div>
-                    <div className="text-gray-500">Failed</div>
-                    <div className="font-medium text-danger">{mission.failed_commands || 0}</div>
+                  <div className="bg-subtle p-3 rounded-lg">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Failed</div>
+                    <div className="font-medium text-danger text-lg">{mission.failed_commands || 0}</div>
                   </div>
-                  <div>
-                    <div className="text-gray-500">Created</div>
-                    <div className="font-medium text-gray-900">
+                  <div className="bg-subtle p-3 rounded-lg">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Created</div>
+                    <div className="font-medium text-gray-900 text-lg">
                       {new Date(mission.created_at).toLocaleDateString()}
                     </div>
                   </div>
