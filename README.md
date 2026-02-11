@@ -18,18 +18,22 @@ ClawDeploy v3 provides a PostgreSQL-backed, password-protected dashboard for orc
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Hetzner VPS (Ubuntu 24.04) — Control Plane             │
-│                                                         │
-│  Nginx (80/443) → Dashboard (3000) + Control API (3001)│
-│                ↓                                        │
-│           PostgreSQL (5432)                             │
-└─────────────────────────────────────────────────────────┘
-         ↑ Agents poll via HTTPS          ↑
-    ┌────┴─────┐   ┌────┴─────┐   ┌────┴─────┐
-    │ Agent A  │   │ Agent B  │   │ Agent C  │
-    │ OpenClaw │   │ OpenClaw │   │ OpenClaw │
-    └──────────┘   └──────────┘   └──────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Hetzner VPS (Ubuntu 24.04) — Control Plane                 │
+│                                                             │
+│  Nginx (80/443) → Dashboard (3000) + Control API (3001)    │
+│                        ↓                                    │
+│                   PostgreSQL (5432)                         │
+│                        ↑                                    │
+│                   Agent Bridge (optional, same server)      │
+│                        ↓                                    │
+│                   OpenClaw Gateway                          │
+└─────────────────────────────────────────────────────────────┘
+              ↑ HTTP/HTTPS polling
+    ┌─────────┴──────────┐   ┌─────────────────┐
+    │ Agent Bridge       │   │ Agent Bridge    │
+    │ (Different Server) │   │ (Another Server)│
+    └────────────────────┘   └─────────────────┘
 ```
 
 ## Quick Start
@@ -73,7 +77,7 @@ ClawDeploy v3 provides a PostgreSQL-backed, password-protected dashboard for orc
    cd ..
    ```
 
-4. **Deploy**
+4. **Deploy Control Plane**
    ```bash
    ./deploy.sh init
    ```
@@ -84,6 +88,22 @@ This will:
 - Deploy Control API and Dashboard
 - Set up basic authentication
 - Run database migrations
+
+5. **Deploy Agent Bridge (Optional)**
+   
+   Deploy agent bridge to the **same VPS** as control plane:
+   ```bash
+   ./deploy.sh agent-bridge-deploy
+   ```
+   
+   Or deploy on a **different server** (copy agent-bridge folder and configure `.env`):
+   ```bash
+   # On target machine:
+   cd agent-bridge
+   cp .env.example .env
+   # Edit .env: set CONTROL_API_URL to your VPS
+   docker compose --profile agent-bridge up -d
+   ```
 
 ### Access the Dashboard
 
@@ -98,9 +118,15 @@ Password: (from .env BETA_PASSWORD)
 
 ```
 clawdeploy/
-├── SPEC.md                    # Architecture specification
-├── RUNSHEET.md                # Migration guide
 ├── README.md                  # This file
+├── DESIGN.md                  # Design reference
+├── QUICK_START.md             # Quick start guide
+├── CHANGELOG.md               # Version history
+├── DEPLOY_READY.md            # Deployment checklist
+├── docs/                      # Documentation
+│   ├── guides/
+│   │   └── AGENT_CONFIG.md    # Agent configuration guide
+│   └── archive/               # Implementation history
 ├── openclaw-source/           # OpenClaw source (git submodule)
 └── deploy/
     ├── deploy.sh              # Main deployment script
@@ -110,7 +136,6 @@ clawdeploy/
     │   ├── src/
     │   │   ├── index.ts
     │   │   ├── db/
-    │   │   ├── migrations/
     │   │   ├── routes/
     │   │   ├── middleware/
     │   │   └── lib/
@@ -126,12 +151,23 @@ clawdeploy/
     │   │   └── types.ts
     │   ├── package.json
     │   └── Dockerfile
+    ├── agent-bridge/          # Agent Bridge (TypeScript + Node)
+    │   ├── src/
+    │   │   ├── index.ts
+    │   │   ├── config.ts
+    │   │   ├── control-api-client.ts
+    │   │   ├── heartbeat.ts
+    │   │   ├── command-poller.ts
+    │   │   └── skills-parser.ts
+    │   ├── package.json
+    │   └── Dockerfile
     ├── terraform/             # Infrastructure as Code
     │   ├── main.tf
     │   └── terraform.tfvars.example
     └── ansible/               # Configuration management
         ├── playbooks/
         │   ├── site.yml
+        │   ├── agent-bridge.yml
         │   ├── db-migrate.yml
         │   ├── backup.yml
         │   └── status.yml
@@ -145,8 +181,24 @@ clawdeploy/
 
 ### Setup
 ```bash
-./deploy.sh init              # Fresh VPS → fully running control plane
-./deploy.sh full              # Terraform + full Ansible redeploy
+./deploy.sh init                     # Fresh VPS → control plane + database
+./deploy.sh full                     # Terraform + full Ansible redeploy
+```
+
+### Agent Bridge - Same Server (VPS)
+```bash
+./deploy.sh agent-bridge-deploy      # Deploy agent bridge to VPS
+./deploy.sh agent-bridge-remote-logs # View agent bridge logs on VPS
+./deploy.sh agent-bridge-remote-status # Check agent status on VPS
+```
+
+### Agent Bridge - Local/Different Server
+```bash
+./deploy.sh agent-bridge-build       # Build agent bridge image (local)
+./deploy.sh agent-bridge-start       # Start agent bridge (local)
+./deploy.sh agent-bridge-stop        # Stop agent bridge
+./deploy.sh agent-bridge-logs        # View logs (local)
+./deploy.sh agent-bridge-status      # Check status (local)
 ```
 
 ### Service Management
@@ -156,6 +208,7 @@ clawdeploy/
 ./deploy.sh dashboard         # Restart Dashboard only
 ./deploy.sh nginx             # Update Nginx config
 ./deploy.sh migrate           # Run database migrations
+./deploy.sh list-agents       # List all registered agents
 ```
 
 ### Maintenance
@@ -266,48 +319,65 @@ See `deploy/control-api/src/migrations/001_initial.sql` for the complete schema.
 - Firewall: Only ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
 - Agent endpoints: Bypass basic auth, require bearer token
 
-## Agent Setup
+## Agent Bridge Setup
 
-ClawDeploy agents use **Kimi K2.5 from Moonshot AI** as the LLM provider.
-
-For detailed agent setup instructions, see **[AGENT_CONFIG.md](AGENT_CONFIG.md)**.
+The **Agent Bridge** connects OpenClaw instances to your control plane. It handles:
+- Agent registration with control plane
+- Periodic heartbeats (keeps status online)
+- Command polling and execution
+- Skill discovery from OpenClaw
 
 ### Quick Setup
 
-1. **Register the agent**
+**Option A: Deploy on Same VPS (Recommended)**
+```bash
+cd deploy
+./deploy.sh agent-bridge-deploy
+```
+
+The agent bridge will:
+1. Register automatically with the control API
+2. Send heartbeats every 30 seconds
+3. Poll for commands every 5 seconds
+4. Show as "online" in dashboard
+
+**Option B: Deploy on Different Server**
+
+1. Copy agent-bridge to target machine:
    ```bash
-   curl -X POST https://your-domain.com/api/agents/register \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Agent A", "description": "Production agent"}'
+   scp -r deploy/agent-bridge/ user@target-machine:/path/to/
    ```
 
-   Response:
-   ```json
-   {
-     "agent_id": "uuid",
-     "token": "bearer-token",
-     "name": "Agent A",
-     "status": "offline"
-   }
-   ```
-
-2. **Configure agent** (on remote server)
+2. Configure on target machine:
    ```bash
-   # .env
-   CONTROL_API_URL=https://your-domain.com/api
-   AGENT_TOKEN=bearer-token-from-registration
+   cd /path/to/agent-bridge
+   cp .env.example .env
+   nano .env
+   ```
    
-   # LLM Configuration - Using Kimi K2.5 from Moonshot AI
-   MOONSHOT_API_KEY=your-moonshot-api-key
-   OPENCLAW_MODEL=moonshot/kimi-k2.5
-   ```
-
-3. **Deploy agent** (Phase 5 - implementation pending)
+   Set:
    ```bash
-   docker run -d --env-file .env openclaw-agent:latest
+   CONTROL_API_URL=http://YOUR_VPS_IP/api
+   AGENT_NAME=Production Agent
+   AGENT_DESCRIPTION=OpenClaw agent instance
    ```
 
-See **[AGENT_CONFIG.md](AGENT_CONFIG.md)** for complete configuration options, troubleshooting, and best practices.
+3. Start agent bridge:
+   ```bash
+   docker compose --profile agent-bridge up -d
+   ```
+
+### Verify Agent Registration
+
+```bash
+# Check agent appears in dashboard
+./deploy.sh list-agents
+
+# View agent logs
+./deploy.sh agent-bridge-remote-logs
+```
+
+See **[docs/guides/AGENT_CONFIG.md](docs/guides/AGENT_CONFIG.md)** for advanced configuration.
 
 ## Maintenance
 
@@ -468,10 +538,10 @@ MIT License - see LICENSE file for details
 ## Additional Documentation
 
 - **[QUICK_START.md](QUICK_START.md)** - 5-step setup guide
-- **[AGENT_CONFIG.md](AGENT_CONFIG.md)** - Complete agent configuration guide
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Deployment verification
-- **[SPEC.md](SPEC.md)** - Architecture specification
-- **[RUNSHEET.md](RUNSHEET.md)** - Migration guide
+- **[DESIGN.md](DESIGN.md)** - Design philosophy and visual reference
+- **[DEPLOY_READY.md](DEPLOY_READY.md)** - Deployment readiness checklist
+- **[docs/guides/AGENT_CONFIG.md](docs/guides/AGENT_CONFIG.md)** - Agent configuration guide
+- **[docs/archive/](docs/archive/)** - Implementation history and planning docs
 
 ## Support
 
