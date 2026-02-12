@@ -41,6 +41,7 @@ build/
 backups/
 *.tar.gz
 *.sql
+!**/migrations/*.sql
 
 # Logs
 *.log
