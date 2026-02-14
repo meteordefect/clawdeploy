@@ -29,6 +29,10 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
 
   const wsRef = useRef<WebSocket | null>(null);
   const sessionKeyRef = useRef<string>(`dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`);
+
+  // Generate a UUID-like client ID
+  const clientIdRef = useRef<string>(`client-${crypto.randomUUID()}`);
+
   const pendingRpcsRef = useRef<Map<string, { resolve: (r: any) => void; reject: (e: Error) => void }>>(new Map());
   const rpcIdCounter = useRef(0);
 
@@ -104,15 +108,62 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     ws.onopen = () => {
       console.log('[OpenClaw] WebSocket connected');
 
-      // With --allow-unconfigured, we can connect without authentication
-      // Mark as connected immediately
-      connectSent = true;
-      setState(prev => ({
-        ...prev,
-        isConnected: true,
-        isConnecting: false,
-        error: null,
-      }));
+      // Send connect request after brief delay
+      setTimeout(() => {
+        if (!connectSent && ws.readyState === WebSocket.OPEN) {
+          connectSent = true;
+          const connectId = `connect-${Date.now()}`;
+
+          pendingRpcsRef.current.set(connectId, {
+            resolve: (result) => {
+              if (result.ok) {
+                console.log('[OpenClaw] Connected successfully');
+                setState(prev => ({
+                  ...prev,
+                  isConnected: true,
+                  isConnecting: false,
+                  error: null,
+                }));
+              } else {
+                console.error('[OpenClaw] Connect failed:', result.error);
+                setState(prev => ({
+                  ...prev,
+                  error: `Connection failed: ${result.error}`,
+                  isConnecting: false,
+                }));
+              }
+            },
+            reject: (err) => {
+              console.error('[OpenClaw] Connect error:', err);
+              setState(prev => ({
+                ...prev,
+                error: err.message,
+                isConnecting: false,
+              }));
+            },
+          });
+
+          // Send connect with proper client ID format
+          ws.send(JSON.stringify({
+            type: 'req',
+            id: connectId,
+            method: 'connect',
+            params: {
+              minProtocol: 3,
+              maxProtocol: 3,
+              client: {
+                id: clientIdRef.current,
+                displayName: 'ClawDeploy Dashboard',
+                version: '1.0.0',
+                platform: 'web',
+                mode: 'user',
+                instanceId: sessionKeyRef.current,
+              },
+              caps: [],
+            },
+          }));
+        }
+      }, 100);
     };
 
     ws.onmessage = (event) => {
