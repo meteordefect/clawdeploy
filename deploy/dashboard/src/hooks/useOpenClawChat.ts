@@ -28,7 +28,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
   });
 
   const wsRef = useRef<WebSocket | null>(null);
-  const sessionKeyRef = useRef<string>('dashboard-session');
+  const sessionKeyRef = useRef<string>(`dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`);
   const pendingRpcsRef = useRef<Map<string, { resolve: (r: any) => void; reject: (e: Error) => void }>>(new Map());
   const rpcIdCounter = useRef(0);
 
@@ -136,19 +136,8 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
             id: connectId,
             method: 'connect',
             params: {
-              minProtocol: 3,
-              maxProtocol: 3,
-              client: {
-                id: 'clawdeploy-dashboard',
-                displayName: 'ClawDeploy Dashboard',
-                version: '1.0.0',
-                platform: 'web',
-                mode: 'user',
-                instanceId: sessionKeyRef.current,
-              },
+              instanceId: sessionKeyRef.current,
               caps: [],
-              role: 'operator',
-              scopes: ['operator.admin'],
               auth: { token: gatewayToken },
             },
           }));
