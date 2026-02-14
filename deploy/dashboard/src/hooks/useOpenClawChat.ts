@@ -138,7 +138,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
             params: {
               instanceId: sessionKeyRef.current,
               caps: [],
-              auth: { token: gatewayToken },
             },
           }));
         }
