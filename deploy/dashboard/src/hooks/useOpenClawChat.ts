@@ -30,8 +30,9 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const sessionKeyRef = useRef<string>(`dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`);
 
-  // Generate a UUID-like client ID
-  const clientIdRef = useRef<string>(`client-${crypto.randomUUID()}`);
+  // OpenClaw gateway requires a specific client ID from GATEWAY_CLIENT_IDS
+  // Valid IDs: webchat-ui, openclaw-control-ui, webchat, cli, gateway-client, openclaw-macos, openclaw-ios, openclaw-android, node-host, test, fingerprint, openclaw-probe
+  const clientIdRef = useRef<string>('webchat-ui');
 
   const pendingRpcsRef = useRef<Map<string, { resolve: (r: any) => void; reject: (e: Error) => void }>>(new Map());
   const rpcIdCounter = useRef(0);
@@ -156,7 +157,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                 displayName: 'ClawDeploy Dashboard',
                 version: '1.0.0',
                 platform: 'web',
-                mode: 'user',
+                mode: 'webchat',  // Must match GATEWAY_CLIENT_MODES
                 instanceId: sessionKeyRef.current,
               },
               caps: [],
