@@ -103,45 +103,16 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
 
     ws.onopen = () => {
       console.log('[OpenClaw] WebSocket connected');
-      
-      // Send connect request after brief delay for challenge
-      setTimeout(() => {
-        if (!connectSent && ws.readyState === WebSocket.OPEN) {
-          connectSent = true;
-          const connectId = `connect-${Date.now()}`;
-          
-          pendingRpcsRef.current.set(connectId, {
-            resolve: (result) => {
-              if (result.ok) {
-                console.log('[OpenClaw] Connected successfully');
-                setState(prev => ({ 
-                  ...prev, 
-                  isConnected: true, 
-                  isConnecting: false,
-                  error: null,
-                }));
-              }
-            },
-            reject: (err) => {
-              setState(prev => ({ 
-                ...prev, 
-                error: err.message,
-                isConnecting: false,
-              }));
-            },
-          });
 
-          ws.send(JSON.stringify({
-            type: 'req',
-            id: connectId,
-            method: 'connect',
-            params: {
-              instanceId: sessionKeyRef.current,
-              caps: [],
-            },
-          }));
-        }
-      }, 750);
+      // With --allow-unconfigured, we can connect without authentication
+      // Mark as connected immediately
+      connectSent = true;
+      setState(prev => ({
+        ...prev,
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+      }));
     };
 
     ws.onmessage = (event) => {
