@@ -22,6 +22,8 @@
           - htop
           - vim
           - apache2-utils
+          - certbot
+          - python3-certbot-nginx
         state: present
 
     - name: Add Docker GPG key
@@ -101,6 +103,16 @@
           - "--exclude=node_modules"
           - "--exclude=dist"
 
+    - name: Copy OpenClaw source (for building gateway image)
+      synchronize:
+        src: ../../../openclaw-source/
+        dest: "{{ project_dir }}/openclaw-source/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=dist"
+          - "--exclude=.git"
+
     - name: Install Nginx
       apt:
         name: nginx
@@ -134,6 +146,12 @@
         state: absent
       notify: Reload Nginx
 
+    - name: Create directory for Let's Encrypt challenges
+      file:
+        path: /var/www/certbot
+        state: directory
+        mode: '0755'
+
     - name: Stop any running containers
       shell: cd {{ project_dir }} && docker compose down || true
       ignore_errors: yes
@@ -154,6 +172,27 @@
       retries: 10
       delay: 5
       until: health_check.stdout == ""
+
+    - name: Obtain SSL certificate from Let's Encrypt
+      shell: >
+        certbot certonly --webroot
+        --webroot-path /var/www/certbot
+        --email "{{ lookup('env', 'SSL_EMAIL') | default('admin@' + lookup('env', 'DOMAIN'), true) }}"
+        --agree-tos
+        --non-interactive
+        -d "{{ lookup('env', 'DOMAIN') }}"
+      register: certbot_result
+      failed_when: false
+      changed_when: certbot_result.rc == 0
+
+    - name: Set up SSL certificate renewal
+      cron:
+        name: "Renew SSL certificate"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
+        hour: "3"
+        minute: "0"
+        user: root
+        state: present
 
   handlers:
     - name: Reload Nginx

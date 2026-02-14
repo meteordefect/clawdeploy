@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { ChatView } from './components/chat/ChatView';
 import { Overview } from './views/Overview';
 import { Agents } from './views/Agents';
 import { Missions } from './views/Missions';
@@ -13,7 +14,9 @@ function App() {
     <BrowserRouter>
       <Layout>
         <Routes>
-          <Route path="/" element={<Overview />} />
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+          <Route path="/chat" element={<ChatView />} />
+          <Route path="/overview" element={<Overview />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/missions" element={<Missions />} />
           <Route path="/files" element={<Files />} />

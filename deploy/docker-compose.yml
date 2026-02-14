@@ -51,6 +51,8 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL}
+        VITE_GATEWAY_WS_URL: ${VITE_GATEWAY_WS_URL}
+        VITE_GATEWAY_TOKEN: ${VITE_GATEWAY_TOKEN}
     container_name: clawdeploy-dashboard
     restart: unless-stopped
     ports:
@@ -89,6 +91,55 @@ services:
         condition: service_healthy
     profiles:
       - agent-bridge
+
+  # OpenClaw Gateway - for dashboard chat feature
+  # Start with: docker compose --profile openclaw-gateway up -d openclaw-gateway
+  openclaw-gateway:
+    build:
+      context: ../openclaw-source
+      dockerfile: Dockerfile
+      args:
+        OPENCLAW_DOCKER_APT_PACKAGES: ""
+    image: openclaw/openclaw:${OPENCLAW_VERSION:-latest}
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    working_dir: /app
+    entrypoint: []
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_AUTH_MODE: ${OPENCLAW_AUTH_MODE:-password}
+      OPENCLAW_GATEWAY_PASSWORD: ${OPENCLAW_GATEWAY_PASSWORD:-}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_CONTROL_UI_BASE_PATH: /dashboard
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+      - openclaw-data:/home/node/.openclaw/workspace
+      # Mount skills if you want to use local skills
+      # - ./openclaw-source/.agents/skills:/openclaw/skills:ro
+    ports:
+      - "127.0.0.1:18789:18789"
+    command:
+      [
+        "node",
+        "openclaw.mjs",
+        "gateway",
+        "--allow-unconfigured",
+        "--bind",
+        "lan",
+        "--port",
+        "18789",
+      ]
+    networks:
+      - clawdeploy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:18789/health > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    profiles:
+      - openclaw-gateway
 
 volumes:
   postgres-data:

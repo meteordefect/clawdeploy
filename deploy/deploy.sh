@@ -314,9 +314,47 @@ cmd_list_agents() {
     log_info "Fetching registered agents..."
     check_env
     load_env
-    
+
     # Call control API to list agents
     curl -s http://localhost:3001/api/agents | python3 -m json.tool || log_error "Failed to fetch agents"
+}
+
+# OpenClaw Gateway commands (for chat feature)
+cmd_gateway_start() {
+    log_info "Starting OpenClaw gateway (for dashboard chat)..."
+    check_env
+    load_env
+    docker compose --profile openclaw-gateway up -d openclaw-gateway
+    log_success "OpenClaw gateway started"
+    log_info "View logs: ./deploy.sh gateway-logs"
+}
+
+cmd_gateway_stop() {
+    log_info "Stopping OpenClaw gateway..."
+    docker compose stop openclaw-gateway
+    log_success "OpenClaw gateway stopped"
+}
+
+cmd_gateway_restart() {
+    log_info "Restarting OpenClaw gateway..."
+    docker compose restart openclaw-gateway
+    log_success "OpenClaw gateway restarted"
+}
+
+cmd_gateway_logs() {
+    log_info "Showing OpenClaw gateway logs (Ctrl+C to exit)..."
+    docker compose logs -f openclaw-gateway
+}
+
+cmd_gateway_status() {
+    log_info "OpenClaw gateway status:"
+    docker compose ps openclaw-gateway
+    echo ""
+    log_info "Health check:"
+    curl -s http://localhost:18789/health | python3 -m json.tool || log_warn "Gateway may not be running"
+    echo ""
+    log_info "Recent logs:"
+    docker compose logs --tail=20 openclaw-gateway
 }
 
 cmd_destroy() {
@@ -326,6 +364,36 @@ cmd_destroy() {
         cmd_terraform_destroy
     else
         log_info "Cancelled"
+    fi
+}
+
+cmd_setup_ssl() {
+    log_info "Running SSL setup..."
+    ./setup-ssl.sh
+}
+
+cmd_renew_ssl() {
+    check_env
+    load_env
+    log_info "Renewing SSL certificates..."
+    ssh $(grep ansible_host ansible/inventory.ini | cut -d'=' -f2) "certbot renew --quiet && systemctl reload nginx"
+    log_success "SSL certificates renewed"
+}
+
+cmd_check_ssl() {
+    check_env
+    load_env
+    log_info "Checking SSL certificate..."
+    local domain=$(grep "^DOMAIN=" .env | cut -d'=' -f2)
+    echo ""
+    echo "Domain: $domain"
+    echo ""
+    if curl -s -I https://$domain 2>&1 | grep -i "ssl\|tls\|certificate" | head -5; then
+        echo ""
+        log_success "SSL is working!"
+    else
+        echo ""
+        log_warn "Could not verify SSL. Make sure the domain points to the server."
     fi
 }
 
@@ -369,6 +437,13 @@ ${BLUE}Agent Bridge - Local/Different Server:${NC}
 
 ${BLUE}Agent Management:${NC}
   list-agents           List all registered agents
+
+${BLUE}OpenClaw Gateway (Chat Feature):${NC}
+  gateway-start         Start OpenClaw gateway service (local)
+  gateway-stop          Stop OpenClaw gateway service
+  gateway-restart       Restart OpenClaw gateway service
+  gateway-logs          View OpenClaw gateway logs
+  gateway-status        Check OpenClaw gateway status
   
 ${BLUE}Maintenance Commands:${NC}
   status            Check all services health
@@ -376,6 +451,11 @@ ${BLUE}Maintenance Commands:${NC}
   ssh               SSH to server
   logs              View server logs
   build-openclaw    Build OpenClaw image from source
+
+${BLUE}SSL/HTTPS Commands:${NC}
+  setup-ssl         Set up SSL certificate for HTTPS
+  renew-ssl         Manually renew SSL certificate
+  check-ssl         Check SSL certificate status
   
 ${BLUE}Destructive Commands:${NC}
   destroy           Tear down everything (DESTRUCTIVE)
@@ -429,7 +509,15 @@ case "${1:-help}" in
     agent-bridge-logs)           cmd_agent_bridge_logs ;;
     agent-bridge-status)         cmd_agent_bridge_status ;;
     list-agents)                 cmd_list_agents ;;
+    gateway-start)               cmd_gateway_start ;;
+    gateway-stop)                cmd_gateway_stop ;;
+    gateway-restart)             cmd_gateway_restart ;;
+    gateway-logs)                cmd_gateway_logs ;;
+    gateway-status)              cmd_gateway_status ;;
     destroy)                     cmd_destroy ;;
+    setup-ssl)                   cmd_setup_ssl ;;
+    renew-ssl)                   cmd_renew_ssl ;;
+    check-ssl)                   cmd_check_ssl ;;
     help|--help|-h)              cmd_help ;;
     *)
         log_error "Unknown command: $1"

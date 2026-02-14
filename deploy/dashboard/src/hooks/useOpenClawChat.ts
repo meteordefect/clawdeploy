@@ -206,21 +206,31 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
 
     ws.onerror = (event) => {
       console.error('[OpenClaw] WebSocket error:', event);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Connection error',
+
+      // Determine if the error is due to gateway not running
+      const errorMessage = `Unable to connect to OpenClaw Gateway at ${gatewayUrl}. ` +
+        `Make sure the gateway is running on port 18789 and accessible.`;
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
         isConnecting: false,
       }));
     };
 
-    ws.onclose = () => {
-      console.log('[OpenClaw] WebSocket closed');
-      setState(prev => ({ 
-        ...prev, 
+    ws.onclose = (event) => {
+      console.log('[OpenClaw] WebSocket closed:', event.code, event.reason);
+      setState(prev => ({
+        ...prev,
         isConnected: false,
         isConnecting: false,
+        // Only show error if it wasn't a clean close
+        ...(event.code !== 1000 && {
+          error: `Connection closed (${event.code}${event.reason ? `: ${event.reason}` : ''}). ` +
+            `The OpenClaw Gateway may not be running.`
+        }),
       }));
-      
+
       // Reject all pending RPCs
       pendingRpcsRef.current.forEach((pending) => {
         pending.reject(new Error('Connection closed'));

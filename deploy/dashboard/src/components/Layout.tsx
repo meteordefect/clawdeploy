@@ -13,12 +13,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'Overview', icon: BarChart3 },
+  { path: '/chat', label: 'Chat', icon: MessageSquare },
   { path: '/agents', label: 'Agents', icon: Bot },
   { path: '/missions', label: 'Missions', icon: Target },
   { path: '/files', label: 'Files', icon: FolderOpen },
-  { path: '/sessions', label: 'Sessions', icon: MessageSquare },
-  { path: '/events', label: 'Events', icon: ScrollText },
+  { path: '/sessions', label: 'Sessions', icon: ScrollText },
+  { path: '/events', label: 'Events', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -138,7 +138,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Mobile Bottom Navigation - Quick Access */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 z-40 pb-safe">
         <div className="flex justify-around items-center p-2">
-          {navItems.slice(0, 4).map((item) => {
+          {[navItems[0], navItems[1], navItems[2], navItems[3]].map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             return (
