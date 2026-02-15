@@ -513,7 +513,18 @@ See `SPEC.md` for detailed roadmap.
 - Docker Compose setup
 - Terraform & Ansible
 
-### Next Up: Reactive Dashboard UI
+### Next Up: Chat Persistence & Session History
+Chats are currently lost on page refresh — messages only live in React state. The Sessions view reads from the wrong path (`~/.openclaw/sessions/` instead of `~/.openclaw/agents/<agentId>/sessions/`) and looks for `.json` instead of `.jsonl` transcripts.
+
+- [ ] Add `chat_sessions` and `chat_messages` tables to PostgreSQL (Team9 pattern: `im_messages` table with `channelId`, `senderId`, `content`, `seqId` for ordering, `clientMsgId` for dedup)
+- [ ] Persist chat messages to DB on send/receive — currently `useOpenClawChat` generates a throwaway `sessionKey` per page load and stores nothing
+- [ ] Fix Sessions route (`control-api/src/routes/sessions.ts`) to read from correct OpenClaw path (`~/.openclaw/agents/<agentId>/sessions/`) and parse `.jsonl` transcript files
+- [ ] Add session browser UI — list prior chat sessions, click to load full transcript (Team9 pattern: cursor-based pagination via `useInfiniteQuery` with `before` param)
+- [ ] (Later, if needed) Add full-text search across chat history — may not be necessary if OpenClaw already has access to session history natively (Team9 pattern: PostgreSQL `tsvector` search index on message content)
+
+> Team9 reference: `external/team9/apps/server/libs/database/src/schemas/im/messages.ts` for the DB schema, `external/team9/apps/client/src/hooks/useMessages.ts` for paginated history loading + real-time WebSocket merge, `external/team9/apps/server/apps/gateway/src/im/messages/messages.service.ts` for cursor-based retrieval.
+
+### Reactive Dashboard UI
 - [ ] Replace `usePolling` with React Query (`@tanstack/react-query`) — shared caching, background refetch, loading/error states, and `refetchInterval` (polling still works, but better)
 - [ ] Add `useMutation` with `invalidateQueries` for actions (e.g., starting/stopping agents) so the UI updates immediately instead of waiting for the next poll cycle
 - [ ] (Later) Add WebSocket/SSE push from control-api to eliminate polling entirely for high-frequency data
