@@ -4,49 +4,67 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Backgrounds
-        surface: '#FAFAFA',
-        card: '#FFFFFF',
-        subtle: '#F5F5F7',
-        
+        // Backgrounds — resolved from CSS custom properties
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        card: 'rgb(var(--color-card) / <alpha-value>)',
+        subtle: 'rgb(var(--color-subtle) / <alpha-value>)',
+
         // Text
-        primary: '#1D1D1F',
-        secondary: '#6E6E73',
-        tertiary: '#A1A1A6',
-        
+        primary: 'rgb(var(--color-primary) / <alpha-value>)',
+        secondary: 'rgb(var(--color-secondary) / <alpha-value>)',
+        tertiary: 'rgb(var(--color-tertiary) / <alpha-value>)',
+
         // Accents
         accent: {
-          DEFAULT: '#1E3A5F', // Midnight Blue
-          dark: '#152A45',
-          light: '#2D4A6F',
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          dark: 'rgb(var(--color-accent-dark) / <alpha-value>)',
+          light: 'rgb(var(--color-accent-light) / <alpha-value>)',
         },
-        
+
         // Status
-        working: '#1E3A5F',
-        review: '#7C3AED',
-        done: '#059669',
-        waiting: '#F59E0B',
-        
-        // Standard Semantic (keeping these for compatibility but mapped to design system)
-        success: '#059669',
-        warning: '#F59E0B',
-        danger: '#DC2626',
+        working: 'rgb(var(--color-working) / <alpha-value>)',
+        review: 'rgb(var(--color-review) / <alpha-value>)',
+        done: 'rgb(var(--color-done) / <alpha-value>)',
+        waiting: 'rgb(var(--color-waiting) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        warning: 'rgb(var(--color-warning) / <alpha-value>)',
+        danger: 'rgb(var(--color-danger) / <alpha-value>)',
+
+        // UI Chrome
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        ring: 'rgb(var(--color-ring) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['Playfair Display', 'Georgia', 'serif'],
+      },
+      fontSize: {
+        'xs':   ['clamp(0.7rem, 0.5vw + 0.5rem, 0.75rem)',   { lineHeight: '1rem' }],
+        'sm':   ['clamp(0.8rem, 0.5vw + 0.6rem, 0.875rem)',  { lineHeight: '1.25rem' }],
+        'base': ['clamp(0.9rem, 0.5vw + 0.7rem, 1rem)',      { lineHeight: '1.5rem' }],
+        'lg':   ['clamp(1rem, 0.5vw + 0.8rem, 1.125rem)',    { lineHeight: '1.75rem' }],
+        'xl':   ['clamp(1.1rem, 0.6vw + 0.9rem, 1.25rem)',   { lineHeight: '1.75rem' }],
+        '2xl':  ['clamp(1.3rem, 0.8vw + 1rem, 1.5rem)',      { lineHeight: '2rem' }],
+        '3xl':  ['clamp(1.6rem, 1vw + 1.2rem, 1.875rem)',    { lineHeight: '2.25rem' }],
+        '4xl':  ['clamp(2rem, 1.5vw + 1.4rem, 2.25rem)',     { lineHeight: '2.5rem' }],
+        '5xl':  ['clamp(2.5rem, 2vw + 1.6rem, 3rem)',        { lineHeight: '1' }],
+        '6xl':  ['clamp(3rem, 2.5vw + 2rem, 3.75rem)',       { lineHeight: '1' }],
       },
       boxShadow: {
         'card': '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)',
         'card-hover': '0 4px 6px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.08)',
       },
       borderRadius: {
-        'xl': '12px',
-        '2xl': '16px',
-      }
+        'sm': 'calc(var(--radius) - 4px)',
+        'md': 'calc(var(--radius) - 2px)',
+        'lg': 'var(--radius)',
+        'xl': 'calc(var(--radius) + 4px)',
+        '2xl': 'calc(var(--radius) + 8px)',
+      },
     },
   },
   plugins: [],

@@ -239,7 +239,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
       {showSuggestions && suggestions.length > 0 && (
         <div
           ref={suggestionsRef}
-          className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
+          className="absolute left-0 right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
         >
           <div className="p-2">
             <div className="text-xs text-gray-500 uppercase tracking-wide px-2 py-1">
@@ -274,7 +274,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
       )}
 
       {showSuggestions && suggestions.length === 0 && mentionQuery && (
-        <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-3 text-sm text-gray-500">
+        <div className="absolute left-0 right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-3 text-sm text-gray-500">
           No matching agents found
         </div>
       )}

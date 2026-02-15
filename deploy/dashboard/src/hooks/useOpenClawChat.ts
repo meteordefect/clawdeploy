@@ -144,7 +144,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
             },
           });
 
-          // Send connect with proper client ID format
+          // Send connect with proper client ID format and auth credentials
           ws.send(JSON.stringify({
             type: 'req',
             id: connectId,
@@ -161,6 +161,10 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                 instanceId: sessionKeyRef.current,
               },
               caps: [],
+              auth: {
+                token: gatewayToken,
+                password: gatewayToken,
+              },
             },
           }));
         }

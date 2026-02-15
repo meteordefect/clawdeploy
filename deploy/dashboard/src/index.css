@@ -4,18 +4,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Design Token System (CSS Custom Properties) ===== */
+:root {
+  /* Backgrounds - RGB channels for Tailwind opacity support */
+  --color-surface: 250 250 250;
+  --color-card: 255 255 255;
+  --color-subtle: 245 245 247;
+
+  /* Text */
+  --color-primary: 29 29 31;
+  --color-secondary: 110 110 115;
+  --color-tertiary: 161 161 166;
+
+  /* Accent (Midnight Blue) */
+  --color-accent: 30 58 95;
+  --color-accent-dark: 21 42 69;
+  --color-accent-light: 45 74 111;
+
+  /* Status */
+  --color-working: 30 58 95;
+  --color-review: 124 58 237;
+  --color-done: 5 150 105;
+  --color-waiting: 245 158 11;
+  --color-success: 5 150 105;
+  --color-warning: 245 158 11;
+  --color-danger: 220 38 38;
+
+  /* UI Chrome */
+  --color-border: 229 229 234;
+  --color-ring: 30 58 95;
+  --color-scrollbar: 209 209 214;
+  --color-scrollbar-hover: 161 161 166;
+
+  /* Base radius */
+  --radius: 0.625rem;
+}
+
+.dark {
+  /* Backgrounds */
+  --color-surface: 17 17 19;
+  --color-card: 26 26 30;
+  --color-subtle: 38 38 42;
+
+  /* Text (inverted hierarchy) */
+  --color-primary: 229 229 231;
+  --color-secondary: 161 161 166;
+  --color-tertiary: 110 110 115;
+
+  /* Accent (lighter for dark bg) */
+  --color-accent: 74 120 175;
+  --color-accent-dark: 59 107 158;
+  --color-accent-light: 100 148 200;
+
+  /* Status (brighter for dark bg) */
+  --color-working: 74 120 175;
+  --color-review: 155 100 255;
+  --color-done: 16 185 129;
+  --color-waiting: 251 191 36;
+  --color-success: 16 185 129;
+  --color-warning: 251 191 36;
+  --color-danger: 248 113 113;
+
+  /* UI Chrome */
+  --color-border: 51 51 56;
+  --color-ring: 74 120 175;
+  --color-scrollbar: 63 63 70;
+  --color-scrollbar-hover: 90 90 98;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #FAFAFA;
-  color: #1D1D1F;
+  background-color: rgb(var(--color-surface));
+  color: rgb(var(--color-primary));
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Playfair Display', Georgia, serif;
-  color: #1D1D1F;
+  color: rgb(var(--color-primary));
 }
 
 code {
@@ -33,10 +101,10 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D1D6;
+  background: rgb(var(--color-scrollbar));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A1A1A6;
+  background: rgb(var(--color-scrollbar-hover));
 }

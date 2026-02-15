@@ -1,0 +1,25 @@
+{
+  "name": "@team9/redis",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1",
+    "@team9/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

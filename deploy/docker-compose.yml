@@ -105,6 +105,7 @@ services:
     restart: unless-stopped
     working_dir: /app
     entrypoint: []
+    user: "0:0"
     environment:
       HOME: /home/node
       TERM: xterm-256color
@@ -112,11 +113,9 @@ services:
       OPENCLAW_GATEWAY_PASSWORD: ${OPENCLAW_GATEWAY_PASSWORD:-}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       OPENCLAW_CONTROL_UI_BASE_PATH: /dashboard
+      ZAI_API_KEY: ${ZHIPU_API_KEY:-}
     volumes:
       - openclaw-data:/home/node/.openclaw
-      - openclaw-data:/home/node/.openclaw/workspace
-      # Mount skills if you want to use local skills
-      # - ./openclaw-source/.agents/skills:/openclaw/skills:ro
     ports:
       - "127.0.0.1:18789:18789"
     command:

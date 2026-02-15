@@ -1,0 +1,132 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768030334915,
+      "tag": "0000_lowly_professor_monster",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768556752139,
+      "tag": "0001_sparkling_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768825014876,
+      "tag": "0002_dapper_young_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768827934210,
+      "tag": "0003_salty_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769491329805,
+      "tag": "0004_panoramic_shockwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1769501252065,
+      "tag": "0005_charming_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1769521952583,
+      "tag": "0006_mean_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769661158761,
+      "tag": "0007_harsh_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1769697951083,
+      "tag": "0008_busy_gabe_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1769762615487,
+      "tag": "0009_overconfident_spirit",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1769784421539,
+      "tag": "0010_safe_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1769847506656,
+      "tag": "0011_cynical_devos",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1770139316665,
+      "tag": "0012_typical_triton",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770191198386,
+      "tag": "0013_melted_goliath",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1770193963325,
+      "tag": "0014_hard_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1770446368663,
+      "tag": "0015_parallel_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1770495931592,
+      "tag": "0016_workable_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1770502081928,
+      "tag": "0017_lively_cassandra_nova",
+      "breakpoints": true
+    }
+  ]
+}

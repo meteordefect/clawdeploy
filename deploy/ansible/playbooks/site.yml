@@ -161,8 +161,8 @@
       environment:
         DOCKER_BUILDKIT: "1"
 
-    - name: Start Docker Compose services (including agent-bridge)
-      shell: cd {{ project_dir }} && docker compose --profile agent-bridge up -d
+    - name: Start Docker Compose services (including agent-bridge and gateway)
+      shell: cd {{ project_dir }} && docker compose --profile agent-bridge --profile openclaw-gateway up -d
       environment:
         COMPOSE_HTTP_TIMEOUT: "200"
 
@@ -172,6 +172,12 @@
       retries: 10
       delay: 5
       until: health_check.stdout == ""
+
+    - name: Configure OpenClaw gateway model (ZAI/GLM-4.7)
+      shell: >
+        cd {{ project_dir }} &&
+        docker exec openclaw-gateway node openclaw.mjs models set zai/glm-4.7
+      ignore_errors: yes
 
     - name: Obtain SSL certificate from Let's Encrypt
       shell: >

@@ -1,0 +1,182 @@
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
+import workspaceApi from "@/services/api/workspace";
+import type {
+  CreateInvitationDto,
+  CreateWorkspaceDto,
+} from "@/types/workspace";
+import { useSelectedWorkspaceId } from "@/stores";
+
+/**
+ * Hook to fetch user's workspaces
+ */
+export function useUserWorkspaces() {
+  return useQuery({
+    queryKey: ["user-workspaces"],
+    queryFn: () => workspaceApi.getUserWorkspaces(),
+  });
+}
+
+/**
+ * Hook to create a new workspace
+ */
+export function useCreateWorkspace() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateWorkspaceDto) =>
+      workspaceApi.createWorkspace(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["user-workspaces"],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to fetch workspace invitations
+ */
+export function useWorkspaceInvitations(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: ["workspace-invitations", workspaceId],
+    queryFn: () => workspaceApi.getInvitations(workspaceId!),
+    enabled: !!workspaceId,
+  });
+}
+
+/**
+ * Hook to create a workspace invitation
+ */
+export function useCreateInvitation(workspaceId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateInvitationDto) =>
+      workspaceApi.createInvitation(workspaceId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-invitations", workspaceId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to revoke a workspace invitation
+ */
+export function useRevokeInvitation(workspaceId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (code: string) =>
+      workspaceApi.revokeInvitation(workspaceId!, code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-invitations", workspaceId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to get invitation info (public)
+ */
+export function useInvitationInfo(code: string | undefined) {
+  return useQuery({
+    queryKey: ["invitation-info", code],
+    queryFn: () => workspaceApi.getInvitationInfo(code!),
+    enabled: !!code,
+  });
+}
+
+/**
+ * Hook to fetch workspace members with infinite scroll pagination
+ */
+export function useWorkspaceMembers(
+  workspaceId: string | undefined,
+  options?: { search?: string; limit?: number },
+) {
+  const limit = options?.limit ?? 20;
+
+  return useInfiniteQuery({
+    queryKey: ["workspace-members", workspaceId, options?.search],
+    queryFn: ({ pageParam = 1 }) =>
+      workspaceApi.getMembers(workspaceId!, {
+        page: pageParam,
+        limit,
+        search: options?.search,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const { page, totalPages } = lastPage.pagination;
+      return page < totalPages ? page + 1 : undefined;
+    },
+    enabled: !!workspaceId,
+  });
+}
+
+/**
+ * Hook to get current user's role in the current workspace
+ */
+export function useCurrentWorkspaceRole() {
+  const workspaceId = useSelectedWorkspaceId();
+  const { data: workspaces } = useUserWorkspaces();
+
+  const currentWorkspace = workspaces?.find((w) => w.id === workspaceId);
+  const role = currentWorkspace?.role;
+
+  const isOwner = role === "owner";
+  const isAdmin = role === "admin";
+  const isOwnerOrAdmin = isOwner || isAdmin;
+
+  return {
+    role,
+    isOwner,
+    isAdmin,
+    isOwnerOrAdmin,
+  };
+}
+
+/**
+ * Hook to update a member's role in the workspace
+ */
+export function useUpdateMemberRole(workspaceId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      role,
+    }: {
+      userId: string;
+      role: "admin" | "member" | "guest";
+    }) => workspaceApi.updateMemberRole(workspaceId!, userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-members", workspaceId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to remove a member from the workspace
+ */
+export function useRemoveMember(workspaceId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) =>
+      workspaceApi.removeMember(workspaceId!, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-members", workspaceId],
+      });
+    },
+  });
+}

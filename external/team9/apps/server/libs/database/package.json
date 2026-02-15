@@ -1,0 +1,43 @@
+{
+  "name": "@team9/database",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schemas": {
+      "source": "./src/schemas/index.ts",
+      "types": "./dist/schemas/index.d.ts",
+      "default": "./dist/schemas/index.js"
+    },
+    "./config": {
+      "source": "./src/config.service.ts",
+      "types": "./dist/config.service.d.ts",
+      "default": "./dist/config.service.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:schemas": "tsc -p tsconfig.schemas.json",
+    "db:generate": "rm -rf dist tsconfig.schemas.tsbuildinfo && pnpm build:schemas && dotenv -e ../../.env -- drizzle-kit generate --config=drizzle.config.mjs",
+    "db:migrate": "dotenv -e ../../.env -- drizzle-kit migrate --config=drizzle.config.mjs",
+    "db:push": "rm -rf dist tsconfig.schemas.tsbuildinfo && pnpm build:schemas && dotenv -e ../../.env -- drizzle-kit push --config=drizzle.config.mjs",
+    "db:studio": "dotenv -e ../../.env -- drizzle-kit studio --config=drizzle.config.mjs"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.7",
+    "@team9/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.7.3"
+  }
+}

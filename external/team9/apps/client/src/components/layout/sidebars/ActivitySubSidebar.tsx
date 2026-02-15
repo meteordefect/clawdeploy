@@ -1,0 +1,172 @@
+import { Bell, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ActivityItem } from "@/components/activity/ActivityItem";
+import { useNotifications } from "@/hooks/useNotifications";
+import {
+  useNotifications as useNotificationsFromStore,
+  useActivityTab,
+  useShowUnreadOnly,
+  notificationActions,
+  filterNotifications,
+  type ActivityTab,
+} from "@/stores/useNotificationStore";
+import { useMarkNotificationsAsRead } from "@/hooks/useNotifications";
+import { groupByDate } from "@/lib/date-utils";
+import { useMemo } from "react";
+
+export function ActivitySubSidebar() {
+  const { t } = useTranslation("navigation");
+  const navigate = useNavigate();
+
+  // Fetch notifications on mount
+  const { isLoading } = useNotifications();
+
+  const allNotifications = useNotificationsFromStore();
+  const activeTab = useActivityTab();
+  const showUnreadOnly = useShowUnreadOnly();
+
+  // Filter notifications using useMemo to avoid creating new array references on every render
+  const notifications = useMemo(
+    () => filterNotifications(allNotifications, activeTab, showUnreadOnly),
+    [allNotifications, activeTab, showUnreadOnly],
+  );
+
+  const { mutate: markAsRead } = useMarkNotificationsAsRead();
+
+  // Group notifications by date
+  const groupedNotifications = useMemo(() => {
+    return groupByDate(notifications, (n) => new Date(n.createdAt), "zh");
+  }, [notifications]);
+
+  const handleActivityClick = (notification: (typeof notifications)[0]) => {
+    // Mark as read
+    if (!notification.isRead) {
+      markAsRead([notification.id]);
+    }
+
+    // Navigate within activity module
+    if (notification.actionUrl) {
+      // Parse actionUrl (e.g., "/channels/123?thread=456&message=789")
+      const url = new URL(notification.actionUrl, window.location.origin);
+      const thread = url.searchParams.get("thread") || undefined;
+      const message = url.searchParams.get("message") || undefined;
+
+      // Extract channelId from pathname (/channels/:channelId or /messages/:channelId)
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 2) {
+        const channelId = pathParts[1];
+        // Navigate to activity internal route instead of channels route
+        navigate({
+          to: "/activity/channel/$channelId",
+          params: { channelId },
+          search: { thread, message },
+        });
+      }
+    } else if (notification.channelId) {
+      navigate({
+        to: "/activity/channel/$channelId",
+        params: { channelId: notification.channelId },
+      });
+    }
+  };
+
+  const toggleUnreadOnly = () => {
+    notificationActions.setShowUnreadOnly(!showUnreadOnly);
+  };
+
+  const handleTabChange = (value: string) => {
+    notificationActions.setActiveTab(value as ActivityTab);
+  };
+
+  return (
+    <aside className="w-64 h-full overflow-hidden bg-nav-sub-bg text-primary-foreground flex flex-col">
+      {/* Header */}
+      <div className="p-4 pb-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">{t("activity")}</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleUnreadOnly}
+            className={cn(
+              "h-7 px-2 text-xs",
+              showUnreadOnly
+                ? "bg-accent/30 text-nav-foreground hover:bg-accent/40"
+                : "text-nav-foreground-subtle hover:text-nav-foreground hover:bg-nav-hover",
+            )}
+          >
+            {t("activityUnread")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="px-3 pb-2">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="w-full bg-nav-active border-none rounded-lg p-1">
+            <TabsTrigger
+              value="all"
+              className="flex-1 text-xs data-[state=active]:bg-nav-hover-strong data-[state=active]:text-nav-foreground data-[state=inactive]:text-nav-foreground-subtle border-none rounded-md"
+            >
+              {t("activityAll")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="mentions"
+              className="flex-1 text-xs data-[state=active]:bg-nav-hover-strong data-[state=active]:text-nav-foreground data-[state=inactive]:text-nav-foreground-subtle border-none rounded-md"
+            >
+              {t("activityMentions")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="threads"
+              className="flex-1 text-xs data-[state=active]:bg-nav-hover-strong data-[state=active]:text-nav-foreground data-[state=inactive]:text-nav-foreground-subtle border-none rounded-md"
+            >
+              {t("activityThreads")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Activity List */}
+      <ScrollArea className="flex-1 min-h-0 [&>[data-slot=scroll-area-viewport]>div]:block!">
+        <div className="px-2 py-2">
+          {isLoading && notifications.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-nav-foreground-faint" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-nav-foreground-faint">
+              <Bell size={32} className="mb-2" />
+              <p className="text-sm">{t("noActivity")}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groupedNotifications.map((group) => (
+                <div key={group.dateKey}>
+                  {/* Date Header */}
+                  <div className="px-2 py-1.5 text-xs font-medium text-nav-foreground-faint">
+                    {group.dateLabel}
+                  </div>
+                  {/* Activity Items */}
+                  <div className="space-y-0.5">
+                    {group.items.map((notification) => (
+                      <ActivityItem
+                        key={notification.id}
+                        notification={notification}
+                        onClick={() => handleActivityClick(notification)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </aside>
+  );
+}

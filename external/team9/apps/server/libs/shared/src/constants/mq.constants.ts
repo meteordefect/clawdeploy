@@ -1,0 +1,75 @@
+/**
+ * RabbitMQ Exchange definitions for distributed IM architecture
+ */
+export const MQ_EXCHANGES = {
+  // Topic exchange for downstream messages (Logic -> Gateway)
+  IM_TOPIC: 'im.exchange.topic',
+
+  // Direct exchange for upstream messages (Gateway -> Logic)
+  IM_UPSTREAM: 'im.exchange.upstream',
+
+  // Dead letter exchange for failed messages
+  IM_DLX: 'im.exchange.dlx',
+
+  // Fanout exchange for broadcast messages (e.g., large group messages)
+  IM_BROADCAST: 'im.exchange.broadcast',
+} as const;
+
+/**
+ * RabbitMQ Queue definitions
+ */
+export const MQ_QUEUES = {
+  // Gateway node queue (dynamically created per node)
+  GATEWAY: (nodeId: string) => `im.queue.gateway.${nodeId}`,
+
+  // IM Worker upstream queue (single queue, internal routing by message type)
+  IM_WORKER_UPSTREAM: 'im.queue.im-worker.upstream',
+
+  // Post-broadcast task queue (handles unread counts + notifications)
+  POST_BROADCAST: 'im.queue.post_broadcast',
+
+  // ACK processing queue
+  ACK_QUEUE: 'im.queue.ack',
+
+  // Dead letter queue
+  DLQ: 'im.queue.dlq',
+} as const;
+
+/**
+ * RabbitMQ Routing Key definitions
+ */
+export const MQ_ROUTING_KEYS = {
+  // Route to specific Gateway node
+  TO_GATEWAY: (nodeId: string) => `gateway.${nodeId}`,
+
+  // Upstream message types
+  UPSTREAM: {
+    MESSAGE: 'upstream.message',
+    ACK: 'upstream.ack',
+    TYPING: 'upstream.typing',
+    READ: 'upstream.read',
+    PRESENCE: 'upstream.presence',
+    // Post-broadcast task (handles unread counts + notifications after Gateway broadcast)
+    POST_BROADCAST: 'upstream.post_broadcast',
+  },
+
+  // Broadcast to all gateways
+  BROADCAST: 'gateway.*',
+} as const;
+
+/**
+ * Message delivery configuration
+ */
+export const MQ_CONFIG = {
+  // Message TTL in gateway queue (60 seconds)
+  GATEWAY_MESSAGE_TTL: 60000,
+
+  // Max retry count for message delivery
+  MAX_RETRY_COUNT: 3,
+
+  // Retry delay in milliseconds
+  RETRY_DELAY: 5000,
+
+  // ACK timeout in milliseconds (10 seconds)
+  ACK_TIMEOUT: 10000,
+} as const;

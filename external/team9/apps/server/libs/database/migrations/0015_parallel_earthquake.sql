@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "idx_bots_access_token" ON "im_bots" USING btree ("access_token");
