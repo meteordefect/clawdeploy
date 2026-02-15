@@ -1,6 +1,5 @@
 import { useRef, useEffect } from 'react';
 import { User, Bot, Wifi, WifiOff, AtSign } from 'lucide-react';
-import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { useOpenClawChat } from '../../hooks/useOpenClawChat';
 import { ChatInput } from './ChatInput';
@@ -99,7 +98,7 @@ export function ChatView() {
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col min-h-0 max-h-[calc(100vh-250px)]">
+      <div className="bg-white rounded-2xl shadow-card border border-black/5 flex-1 flex flex-col min-h-0 max-h-[calc(100vh-250px)] overflow-hidden">
         {/* Connection notice when gateway is unavailable */}
         {!isConnected && !isConnecting && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
@@ -232,7 +231,7 @@ export function ChatView() {
             Type <span className="font-mono bg-black/5 px-1 rounded">@agentname</span> to mention specific agents
           </p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

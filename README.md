@@ -513,6 +513,13 @@ See `SPEC.md` for detailed roadmap.
 - Docker Compose setup
 - Terraform & Ansible
 
+### Next Up: Reactive Dashboard UI
+- [ ] Replace `usePolling` with React Query (`@tanstack/react-query`) — shared caching, background refetch, loading/error states, and `refetchInterval` (polling still works, but better)
+- [ ] Add `useMutation` with `invalidateQueries` for actions (e.g., starting/stopping agents) so the UI updates immediately instead of waiting for the next poll cycle
+- [ ] (Later) Add WebSocket/SSE push from control-api to eliminate polling entirely for high-frequency data
+
+> Step 1 is a drop-in improvement that follows the Team9 pattern (`external/team9/apps/client/`). Add `@tanstack/react-query` as a dependency and convert views from `usePolling` to `useQuery` — the shape of the code is almost identical.
+
 ### Phase 2: Agent SDK
 - Agent heartbeat client
 - Command executor
