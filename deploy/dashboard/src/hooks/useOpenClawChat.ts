@@ -8,6 +8,13 @@ interface Message {
   sessionKey?: string;
 }
 
+export interface ChatSession {
+  key: string;
+  preview: string;
+  timestamp: number;
+  messageCount: number;
+}
+
 interface ChatState {
   messages: Message[];
   isConnected: boolean;
@@ -15,27 +22,110 @@ interface ChatState {
   error: string | null;
 }
 
+// --- localStorage persistence ---
+
+const SESSIONS_INDEX_KEY = 'openclaw-chat-sessions';
+const CURRENT_SESSION_KEY = 'openclaw-chat-active-session';
+const msgStorageKey = (key: string) => `openclaw-chat-msg-${key}`;
+
+export function loadSessionsIndex(): ChatSession[] {
+  try { return JSON.parse(localStorage.getItem(SESSIONS_INDEX_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveSessionsIndex(sessions: ChatSession[]) {
+  try { localStorage.setItem(SESSIONS_INDEX_KEY, JSON.stringify(sessions)); }
+  catch { /* storage full */ }
+}
+
+function loadMessagesFromStorage(sessionKey: string): Message[] {
+  try { return JSON.parse(localStorage.getItem(msgStorageKey(sessionKey)) || '[]'); }
+  catch { return []; }
+}
+
+function saveMessagesToStorage(sessionKey: string, messages: Message[]) {
+  try { localStorage.setItem(msgStorageKey(sessionKey), JSON.stringify(messages)); }
+  catch { /* storage full */ }
+}
+
+function generateSessionKey(): string {
+  return `dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
+}
+
+function getOrCreateCurrentSessionKey(): string {
+  const stored = localStorage.getItem(CURRENT_SESSION_KEY);
+  if (stored) return stored;
+  const key = generateSessionKey();
+  localStorage.setItem(CURRENT_SESSION_KEY, key);
+  return key;
+}
+
+function updateSessionsIndex(sessionKey: string, messages: Message[]): ChatSession[] {
+  const sessions = loadSessionsIndex();
+  const lastMsg = messages[messages.length - 1];
+  const firstUserMsg = messages.find(m => m.role === 'user');
+  const preview = firstUserMsg
+    ? firstUserMsg.content.substring(0, 80)
+    : (lastMsg?.content.substring(0, 80) || '');
+
+  const idx = sessions.findIndex(s => s.key === sessionKey);
+  const entry: ChatSession = {
+    key: sessionKey,
+    preview,
+    timestamp: lastMsg?.timestamp || Date.now(),
+    messageCount: messages.length,
+  };
+
+  if (idx >= 0) sessions[idx] = entry;
+  else sessions.unshift(entry);
+
+  sessions.sort((a, b) => b.timestamp - a.timestamp);
+  const trimmed = sessions.slice(0, 50);
+  saveSessionsIndex(trimmed);
+  return trimmed;
+}
+
+// --- Hook ---
+
 /**
  * Hook to connect to OpenClaw Gateway via WebSocket
- * Uses OpenClaw's native protocol for chat
+ * Uses OpenClaw's native protocol for chat with localStorage persistence
  */
 export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
-  const [state, setState] = useState<ChatState>({
-    messages: [],
+  const initialSessionKey = getOrCreateCurrentSessionKey();
+
+  const [activeSessionKey, setActiveSessionKey] = useState<string>(initialSessionKey);
+  const [savedSessions, setSavedSessions] = useState<ChatSession[]>(loadSessionsIndex);
+  const [state, setState] = useState<ChatState>(() => ({
+    messages: loadMessagesFromStorage(initialSessionKey),
     isConnected: false,
     isConnecting: false,
     error: null,
-  });
+  }));
 
   const wsRef = useRef<WebSocket | null>(null);
-  const sessionKeyRef = useRef<string>(`dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`);
+  const sessionKeyRef = useRef<string>(initialSessionKey);
 
   // OpenClaw gateway requires a specific client ID from GATEWAY_CLIENT_IDS
-  // Valid IDs: webchat-ui, openclaw-control-ui, webchat, cli, gateway-client, openclaw-macos, openclaw-ios, openclaw-android, node-host, test, fingerprint, openclaw-probe
   const clientIdRef = useRef<string>('webchat-ui');
 
   const pendingRpcsRef = useRef<Map<string, { resolve: (r: any) => void; reject: (e: Error) => void }>>(new Map());
   const rpcIdCounter = useRef(0);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    sessionKeyRef.current = activeSessionKey;
+  }, [activeSessionKey]);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    const key = sessionKeyRef.current;
+    saveMessagesToStorage(key, state.messages);
+    if (state.messages.length > 0) {
+      const updated = updateSessionsIndex(key, state.messages);
+      setSavedSessions(updated);
+    }
+  }, [state.messages]);
 
   // Send RPC request to gateway
   const sendRpc = useCallback((method: string, params: any = {}): Promise<any> => {
@@ -56,7 +146,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
       pendingRpcsRef.current.set(id, { resolve, reject });
       wsRef.current.send(JSON.stringify(frame));
 
-      // Timeout after 30 seconds
       setTimeout(() => {
         if (pendingRpcsRef.current.has(id)) {
           pendingRpcsRef.current.delete(id);
@@ -69,20 +158,18 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
   // Send message to OpenClaw
   const sendMessage = useCallback(async (content: string) => {
     try {
-      // Add user message to UI immediately
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: 'user',
         content,
         timestamp: Date.now(),
       };
-      
+
       setState(prev => ({
         ...prev,
         messages: [...prev.messages, userMessage],
       }));
 
-      // Send via OpenClaw chat.send RPC
       await sendRpc('chat.send', {
         sessionKey: sessionKeyRef.current,
         message: content,
@@ -97,6 +184,39 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     }
   }, [sendRpc]);
 
+  // Start a new chat session
+  const startNewSession = useCallback(() => {
+    const newKey = generateSessionKey();
+    localStorage.setItem(CURRENT_SESSION_KEY, newKey);
+    sessionKeyRef.current = newKey;
+    setActiveSessionKey(newKey);
+    setState(prev => ({ ...prev, messages: [] }));
+  }, []);
+
+  // Load an existing session's messages
+  const loadSession = useCallback((key: string) => {
+    const messages = loadMessagesFromStorage(key);
+    localStorage.setItem(CURRENT_SESSION_KEY, key);
+    sessionKeyRef.current = key;
+    setActiveSessionKey(key);
+    setState(prev => ({ ...prev, messages }));
+  }, []);
+
+  // Delete a session from history
+  const deleteSession = useCallback((key: string) => {
+    localStorage.removeItem(msgStorageKey(key));
+    const sessions = loadSessionsIndex().filter(s => s.key !== key);
+    saveSessionsIndex(sessions);
+    setSavedSessions(sessions);
+    if (key === sessionKeyRef.current) {
+      const newKey = generateSessionKey();
+      localStorage.setItem(CURRENT_SESSION_KEY, newKey);
+      sessionKeyRef.current = newKey;
+      setActiveSessionKey(newKey);
+      setState(prev => ({ ...prev, messages: [] }));
+    }
+  }, []);
+
   // Connect to OpenClaw gateway
   useEffect(() => {
     setState(prev => ({ ...prev, isConnecting: true }));
@@ -109,7 +229,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     ws.onopen = () => {
       console.log('[OpenClaw] WebSocket connected');
 
-      // Send connect request after brief delay
       setTimeout(() => {
         if (!connectSent && ws.readyState === WebSocket.OPEN) {
           connectSent = true;
@@ -144,7 +263,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
             },
           });
 
-          // Send connect with proper client ID format and auth credentials
           ws.send(JSON.stringify({
             type: 'req',
             id: connectId,
@@ -157,7 +275,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                 displayName: 'ClawDeploy Dashboard',
                 version: '1.0.0',
                 platform: 'web',
-                mode: 'webchat',  // Must match GATEWAY_CLIENT_MODES
+                mode: 'webchat',
                 instanceId: sessionKeyRef.current,
               },
               caps: [],
@@ -175,7 +293,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
       try {
         const msg = JSON.parse(event.data);
 
-        // Handle RPC responses
         if (msg.type === 'res' && msg.id && pendingRpcsRef.current.has(msg.id)) {
           const pending = pendingRpcsRef.current.get(msg.id)!;
           pendingRpcsRef.current.delete(msg.id);
@@ -189,11 +306,9 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
           return;
         }
 
-        // Handle chat events (agent responses)
         if (msg.type === 'event' && msg.event === 'chat') {
           const payload = msg.payload;
-          
-          // Only show final messages
+
           if (payload.state === 'final' && payload.message) {
             const assistantMessage: Message = {
               id: `assistant-${Date.now()}-${payload.seq}`,
@@ -212,8 +327,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
             }));
           }
         }
-
-        // Ignore other events (tick, challenge, etc.)
       } catch (err) {
         console.error('[OpenClaw] Failed to parse message:', err);
       }
@@ -222,7 +335,6 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     ws.onerror = (event) => {
       console.error('[OpenClaw] WebSocket error:', event);
 
-      // Determine if the error is due to gateway not running
       const errorMessage = `Unable to connect to OpenClaw Gateway at ${gatewayUrl}. ` +
         `Make sure the gateway is running on port 18789 and accessible.`;
 
@@ -239,21 +351,18 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
         ...prev,
         isConnected: false,
         isConnecting: false,
-        // Only show error if it wasn't a clean close
         ...(event.code !== 1000 && {
           error: `Connection closed (${event.code}${event.reason ? `: ${event.reason}` : ''}). ` +
             `The OpenClaw Gateway may not be running.`
         }),
       }));
 
-      // Reject all pending RPCs
       pendingRpcsRef.current.forEach((pending) => {
         pending.reject(new Error('Connection closed'));
       });
       pendingRpcsRef.current.clear();
     };
 
-    // Cleanup on unmount
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.close();
@@ -263,6 +372,11 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
 
   return {
     ...state,
+    activeSessionKey,
+    savedSessions,
     sendMessage,
+    startNewSession,
+    loadSession,
+    deleteSession,
   };
 }

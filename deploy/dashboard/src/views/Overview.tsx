@@ -113,11 +113,11 @@ export function Overview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card title="Agents" noPadding>
           {agents && agents.length > 0 ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {agents.slice(0, 5).map((agent) => (
                 <div key={agent.id} className="flex items-center justify-between p-4 hover:bg-subtle/30 transition-colors group">
                   <div className="flex items-center gap-3 flex-1">
-                     <div className="w-8 h-8 rounded-full bg-subtle flex items-center justify-center text-lg border border-gray-100">
+                     <div className="w-8 h-8 rounded-full bg-subtle flex items-center justify-center text-lg border border-border">
                         🤖
                     </div>
                     <div className="flex-1">
@@ -137,7 +137,7 @@ export function Overview() {
                   </div>
                 </div>
               ))}
-              <div className="p-3 text-center border-t border-gray-50">
+              <div className="p-3 text-center border-t border-border/50">
                 <a href="/agents" className="text-xs font-medium text-accent hover:text-accent-dark transition-colors">View All Agents →</a>
               </div>
             </div>
@@ -148,11 +148,11 @@ export function Overview() {
 
         <Card title="Recent Events" noPadding>
           {events && events.length > 0 ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {events.map((event) => (
                 <div key={event.id} className="p-4 hover:bg-subtle/30 transition-colors">
                   <div className="flex justify-between items-start mb-1">
-                     <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-subtle text-primary border border-gray-200 uppercase tracking-wide">
+                     <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-subtle text-primary border border-border uppercase tracking-wide">
                         {event.type}
                       </span>
                       <div className="text-[10px] text-tertiary">
@@ -174,7 +174,7 @@ export function Overview() {
                   </div>
                 </div>
               ))}
-               <div className="p-3 text-center border-t border-gray-50">
+               <div className="p-3 text-center border-t border-border/50">
                 <a href="/events" className="text-xs font-medium text-accent hover:text-accent-dark transition-colors">View Full Log →</a>
               </div>
             </div>
@@ -209,26 +209,26 @@ export function Overview() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary mb-2">
               Agent Name
             </label>
             <input
               type="text"
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+              className="input-base"
               placeholder="Enter agent name"
               disabled={saving}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary mb-2">
               Description (Optional)
             </label>
             <textarea
               value={editForm.description}
               onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none resize-none"
+              className="input-base resize-none"
               placeholder="Enter agent description"
               rows={3}
               disabled={saving}

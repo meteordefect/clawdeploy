@@ -39,12 +39,12 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
         
-        <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all">
-          <div className="px-6 py-4 border-b border-gray-100">
+        <div className="relative bg-card rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all border border-border">
+          <div className="px-6 py-4 border-b border-border">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-primary">{title}</h2>
               <button
@@ -63,7 +63,7 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
           </div>
           
           {footer && (
-            <div className="px-6 py-4 border-t border-gray-100 bg-subtle/30">
+            <div className="px-6 py-4 border-t border-border bg-subtle/30">
               {footer}
             </div>
           )}

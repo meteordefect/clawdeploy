@@ -77,8 +77,8 @@ export function Agents() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900">Agents</h1>
-          <p className="text-gray-600 mt-1">Registered OpenClaw instances</p>
+          <h1 className="text-3xl font-serif font-bold text-primary">Agents</h1>
+          <p className="text-secondary mt-1">Registered OpenClaw instances</p>
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export function Agents() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm bg-subtle/50 p-4 rounded-xl border border-gray-100">
+                <div className="grid grid-cols-2 gap-4 text-sm bg-subtle/50 p-4 rounded-xl border border-border">
                   <div>
                     <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Last Heartbeat</div>
                     <div className="font-medium text-primary">
@@ -133,7 +133,7 @@ export function Agents() {
                   </div>
                   <div>
                     <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Agent ID</div>
-                    <div className="font-mono text-xs text-secondary bg-white px-2 py-1 rounded border border-gray-200 inline-block">
+                    <div className="font-mono text-xs text-secondary bg-subtle px-2 py-1 rounded border border-border inline-block">
                       {agent.id.slice(0, 8)}...
                     </div>
                   </div>
@@ -142,7 +142,7 @@ export function Agents() {
                 {Object.keys(agent.health).length > 0 && (
                   <div>
                     <div className="text-xs text-secondary mb-2 font-medium">Health Metrics</div>
-                    <pre className="text-[10px] bg-subtle p-3 rounded-lg overflow-x-auto text-secondary border border-gray-100">
+                    <pre className="text-[10px] bg-subtle p-3 rounded-lg overflow-x-auto text-secondary border border-border">
                       {JSON.stringify(agent.health, null, 2)}
                     </pre>
                   </div>
@@ -188,26 +188,26 @@ export function Agents() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary mb-2">
               Agent Name
             </label>
             <input
               type="text"
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+              className="input-base"
               placeholder="Enter agent name"
               disabled={saving}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary mb-2">
               Description (Optional)
             </label>
             <textarea
               value={editForm.description}
               onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none resize-none"
+              className="input-base resize-none"
               placeholder="Enter agent description"
               rows={3}
               disabled={saving}

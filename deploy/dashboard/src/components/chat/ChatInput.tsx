@@ -210,7 +210,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed shadow-sm"
+            className="w-full px-4 py-3 pr-12 bg-subtle border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed text-primary placeholder:text-tertiary shadow-sm"
             style={{ minHeight: '44px', maxHeight: '150px' }}
           />
           {input.length > 0 && (
@@ -219,7 +219,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
                 setInput('');
                 adjustTextareaHeight();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-tertiary hover:text-secondary transition-colors"
               aria-label="Clear input"
             >
               <AtSign size={14} />
@@ -229,7 +229,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
         <button
           onClick={handleSend}
           disabled={!input.trim() || disabled}
-          className="px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+          className="px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
         >
           <Send size={18} />
         </button>
@@ -239,10 +239,10 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
       {showSuggestions && suggestions.length > 0 && (
         <div
           ref={suggestionsRef}
-          className="absolute left-0 right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
+          className="absolute left-0 right-0 bottom-full mb-2 bg-card border border-border rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
         >
           <div className="p-2">
-            <div className="text-xs text-gray-500 uppercase tracking-wide px-2 py-1">
+            <div className="text-xs text-tertiary uppercase tracking-wide px-2 py-1">
               {mentionQuery ? 'Matching Agents' : 'All Online Agents'}
             </div>
             {suggestions.map((agent, index) => (
@@ -251,20 +251,20 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
                 onClick={() => handleSelectSuggestion(agent)}
                 className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors ${
                   index === selectedIndex
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'hover:bg-gray-50'
+                    ? 'bg-accent/15 text-accent-light'
+                    : 'hover:bg-subtle'
                 }`}
               >
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-lg shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-subtle flex items-center justify-center text-lg shadow-sm border border-border">
                   🤖
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{agent.name}</div>
+                  <div className="font-medium text-sm text-primary truncate">{agent.name}</div>
                   {agent.description && (
-                    <div className="text-xs text-gray-500 truncate">{agent.description}</div>
+                    <div className="text-xs text-tertiary truncate">{agent.description}</div>
                   )}
                 </div>
-                <div className="text-xs text-green-600 font-medium">
+                <div className="text-xs text-success font-medium">
                   {formatLastSeen(agent.last_heartbeat)}
                 </div>
               </button>
@@ -274,7 +274,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
       )}
 
       {showSuggestions && suggestions.length === 0 && mentionQuery && (
-        <div className="absolute left-0 right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-3 text-sm text-gray-500">
+        <div className="absolute left-0 right-0 bottom-full mb-2 bg-card border border-border rounded-xl shadow-lg z-50 p-3 text-sm text-tertiary">
           No matching agents found
         </div>
       )}

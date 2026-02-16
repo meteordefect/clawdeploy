@@ -10,8 +10,8 @@ export function Badge({ children, variant = 'solid', className = '' }: BadgeProp
   const baseStyles = "inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors";
   
   const variants = {
-    solid: "bg-primary text-white shadow-sm",
-    outline: "bg-transparent text-secondary border border-gray-200"
+    solid: "bg-accent text-white shadow-sm",
+    outline: "bg-transparent text-secondary border border-border"
   };
 
   return (

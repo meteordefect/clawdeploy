@@ -27,7 +27,7 @@ const statusConfig: Record<string, { bg: string, text: string, dot: string }> = 
   cancelled: { bg: 'bg-gray-400', text: 'text-white', dot: 'bg-gray-400' },
   
   // Default
-  default: { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-300' }
+  default: { bg: 'bg-subtle', text: 'text-secondary', dot: 'bg-tertiary' }
 };
 
 export function StatusBadge({ status, className = '', variant = 'solid' }: StatusBadgeProps) {
@@ -45,14 +45,12 @@ export function StatusBadge({ status, className = '', variant = 'solid' }: Statu
 
   if (variant === 'outline') {
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider border border-gray-200 text-secondary bg-white ${className}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider border border-border text-secondary bg-card ${className}`}>
         {status}
       </span>
     );
   }
   
-  // Solid variant (default from design doc)
-  // "bg-primary text-white rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider"
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider shadow-sm ${config.bg} ${config.text} ${className}`}>
       {status}

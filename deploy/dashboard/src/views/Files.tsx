@@ -70,7 +70,7 @@ export function Files() {
                   onClick={() => handleSelectFile(file)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors font-medium ${
                     selectedFile === file
-                      ? 'bg-primary text-white shadow-sm'
+                      ? 'bg-accent text-white shadow-sm'
                       : 'hover:bg-subtle text-secondary hover:text-primary'
                   }`}
                 >
@@ -91,7 +91,7 @@ export function Files() {
               <textarea
                 value={fileContent}
                 onChange={(e) => setFileContent(e.target.value)}
-                className="w-full flex-1 min-h-[400px] px-4 py-3 border border-gray-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-subtle/30 resize-none"
+                className="w-full flex-1 min-h-[400px] px-4 py-3 border border-border rounded-xl font-mono text-sm focus:ring-2 focus:ring-ring focus:border-transparent outline-none bg-subtle/30 text-primary resize-none"
                 spellCheck={false}
               />
               <div className="flex justify-end pt-2">

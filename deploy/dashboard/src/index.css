@@ -5,8 +5,45 @@
 @tailwind utilities;
 
 /* ===== Design Token System (CSS Custom Properties) ===== */
+/* Default: Dark theme (Claude-inspired, a touch darker) */
 :root {
-  /* Backgrounds - RGB channels for Tailwind opacity support */
+  /* Backgrounds - warm dark charcoal */
+  --color-surface: 13 13 11;
+  --color-card: 22 21 19;
+  --color-subtle: 34 33 30;
+
+  /* Text (warm off-white hierarchy) */
+  --color-primary: 232 230 224;
+  --color-secondary: 150 147 140;
+  --color-tertiary: 100 97 90;
+
+  /* Accent (steel blue - works on dark bg) */
+  --color-accent: 90 130 180;
+  --color-accent-dark: 75 115 165;
+  --color-accent-light: 115 155 205;
+
+  /* Status (bright for dark bg) */
+  --color-working: 90 130 180;
+  --color-review: 155 100 255;
+  --color-done: 20 180 130;
+  --color-waiting: 240 180 40;
+  --color-success: 20 180 130;
+  --color-warning: 240 180 40;
+  --color-danger: 240 100 100;
+
+  /* UI Chrome */
+  --color-border: 46 44 40;
+  --color-ring: 90 130 180;
+  --color-scrollbar: 58 56 50;
+  --color-scrollbar-hover: 80 77 70;
+
+  /* Base radius */
+  --radius: 0.625rem;
+}
+
+/* Light theme override */
+.light {
+  /* Backgrounds */
   --color-surface: 250 250 250;
   --color-card: 255 255 255;
   --color-subtle: 245 245 247;
@@ -35,41 +72,6 @@
   --color-ring: 30 58 95;
   --color-scrollbar: 209 209 214;
   --color-scrollbar-hover: 161 161 166;
-
-  /* Base radius */
-  --radius: 0.625rem;
-}
-
-.dark {
-  /* Backgrounds */
-  --color-surface: 17 17 19;
-  --color-card: 26 26 30;
-  --color-subtle: 38 38 42;
-
-  /* Text (inverted hierarchy) */
-  --color-primary: 229 229 231;
-  --color-secondary: 161 161 166;
-  --color-tertiary: 110 110 115;
-
-  /* Accent (lighter for dark bg) */
-  --color-accent: 74 120 175;
-  --color-accent-dark: 59 107 158;
-  --color-accent-light: 100 148 200;
-
-  /* Status (brighter for dark bg) */
-  --color-working: 74 120 175;
-  --color-review: 155 100 255;
-  --color-done: 16 185 129;
-  --color-waiting: 251 191 36;
-  --color-success: 16 185 129;
-  --color-warning: 251 191 36;
-  --color-danger: 248 113 113;
-
-  /* UI Chrome */
-  --color-border: 51 51 56;
-  --color-ring: 74 120 175;
-  --color-scrollbar: 63 63 70;
-  --color-scrollbar-hover: 90 90 98;
 }
 
 body {
@@ -107,4 +109,14 @@ code {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--color-scrollbar-hover));
+}
+
+/* Form input base styles using tokens */
+@layer components {
+  .input-base {
+    @apply w-full px-4 py-2.5 bg-card border border-border rounded-xl text-primary placeholder:text-tertiary focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow outline-none text-sm;
+  }
+  .select-base {
+    @apply appearance-none bg-card px-4 py-2 pr-8 border border-border rounded-xl text-primary focus:ring-2 focus:ring-ring focus:border-transparent outline-none text-sm font-medium shadow-sm cursor-pointer;
+  }
 }

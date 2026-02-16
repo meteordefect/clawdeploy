@@ -64,7 +64,7 @@ export function Missions() {
   if (loading && !missions) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading missions...</div>
+        <div className="text-tertiary">Loading missions...</div>
       </div>
     );
   }
@@ -81,8 +81,8 @@ export function Missions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900">Missions</h1>
-          <p className="text-gray-600 mt-1">High-level objectives and command queues</p>
+          <h1 className="text-3xl font-serif font-bold text-primary">Missions</h1>
+          <p className="text-secondary mt-1">High-level objectives and command queues</p>
         </div>
         <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
@@ -96,38 +96,38 @@ export function Missions() {
         <Card title="Create New Mission">
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary mb-1">
                 Mission Name
               </label>
               <input
                 type="text"
                 value={newMission.name}
                 onChange={(e) => setNewMission({ ...newMission, name: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+                className="input-base"
                 placeholder="e.g., Explain who you are to me"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary mb-1">
                 Description (Optional)
               </label>
               <textarea
                 value={newMission.description}
                 onChange={(e) => setNewMission({ ...newMission, description: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+                className="input-base resize-none"
                 placeholder="Additional context for the agent"
                 rows={3}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary mb-1">
                 Assign to Agent
               </label>
               <select
                 value={newMission.agentId}
                 onChange={(e) => setNewMission({ ...newMission, agentId: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none"
+                className="select-base w-full"
               >
                 <option value="">Any Available Agent</option>
                 {agents?.filter(a => a.status === 'online').map((agent) => (
@@ -136,7 +136,7 @@ export function Missions() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-tertiary mt-1">
                 Leave blank to assign to any available agent
               </p>
             </div>
@@ -167,11 +167,11 @@ export function Missions() {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
-                        <h3 className="font-semibold text-lg text-gray-900">{mission.name}</h3>
+                        <span className="text-tertiary">{isExpanded ? '▼' : '▶'}</span>
+                        <h3 className="font-semibold text-lg text-primary">{mission.name}</h3>
                       </div>
                       {mission.description && (
-                        <p className="text-sm text-gray-600 mt-1 ml-6">{mission.description}</p>
+                        <p className="text-sm text-secondary mt-1 ml-6">{mission.description}</p>
                       )}
                     </div>
                     <StatusBadge status={mission.status} />
@@ -179,54 +179,54 @@ export function Missions() {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
                     <div className="bg-subtle p-3 rounded-lg">
-                      <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Total Commands</div>
-                      <div className="font-medium text-gray-900 text-lg">{mission.total_commands || 0}</div>
+                      <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Total Commands</div>
+                      <div className="font-medium text-primary text-lg">{mission.total_commands || 0}</div>
                     </div>
                     <div className="bg-subtle p-3 rounded-lg">
-                      <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Completed</div>
+                      <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Completed</div>
                       <div className="font-medium text-success text-lg">{mission.completed_commands || 0}</div>
                     </div>
                     <div className="bg-subtle p-3 rounded-lg">
-                      <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Failed</div>
+                      <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Failed</div>
                       <div className="font-medium text-danger text-lg">{mission.failed_commands || 0}</div>
                     </div>
                     <div className="bg-subtle p-3 rounded-lg">
-                      <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Created</div>
-                      <div className="font-medium text-gray-900 text-lg">
+                      <div className="text-tertiary text-xs uppercase tracking-wide mb-1">Created</div>
+                      <div className="font-medium text-primary text-lg">
                         {new Date(mission.created_at).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
 
                   {isExpanded && details && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3">Command Results</h4>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <h4 className="text-sm font-semibold text-secondary mb-3">Command Results</h4>
                       {details.commands && details.commands.length > 0 ? (
                         <div className="space-y-3">
                           {details.commands.map((cmd: any) => (
-                            <div key={cmd.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div key={cmd.id} className="bg-subtle rounded-lg p-4 border border-border">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-mono bg-gray-200 px-2 py-1 rounded">{cmd.type}</span>
+                                  <span className="text-xs font-mono bg-card px-2 py-1 rounded border border-border">{cmd.type}</span>
                                   <StatusBadge status={cmd.status} />
                                 </div>
                                 {cmd.agent_name && (
-                                  <span className="text-xs text-gray-500">by {cmd.agent_name}</span>
+                                  <span className="text-xs text-tertiary">by {cmd.agent_name}</span>
                                 )}
                               </div>
                               
                               {cmd.result && (
                                 <div className="mt-3">
-                                  <div className="text-xs text-gray-500 mb-1">Response:</div>
-                                  <div className="bg-white rounded p-3 border border-gray-200">
+                                  <div className="text-xs text-tertiary mb-1">Response:</div>
+                                  <div className="bg-card rounded p-3 border border-border">
                                     {typeof cmd.result === 'object' && cmd.result.response ? (
                                       <div className="space-y-2">
-                                        <div className="text-sm text-gray-900 whitespace-pre-wrap">
+                                        <div className="text-sm text-primary whitespace-pre-wrap">
                                           {cmd.result.response}
                                         </div>
                                         {cmd.result.query && (
-                                          <details className="text-xs text-gray-500 mt-2">
-                                            <summary className="cursor-pointer hover:text-gray-700">Debug Info</summary>
+                                          <details className="text-xs text-tertiary mt-2">
+                                            <summary className="cursor-pointer hover:text-secondary">Debug Info</summary>
                                             <pre className="mt-2 text-xs">
                                               {JSON.stringify(cmd.result, null, 2)}
                                             </pre>
@@ -234,7 +234,7 @@ export function Missions() {
                                         )}
                                       </div>
                                     ) : (
-                                      <pre className="text-sm text-gray-900 whitespace-pre-wrap font-sans">
+                                      <pre className="text-sm text-primary whitespace-pre-wrap font-sans">
                                         {typeof cmd.result === 'string' 
                                           ? cmd.result 
                                           : JSON.stringify(cmd.result, null, 2)}
@@ -244,7 +244,7 @@ export function Missions() {
                                 </div>
                               )}
                               
-                              <div className="flex gap-4 mt-3 text-xs text-gray-500">
+                              <div className="flex gap-4 mt-3 text-xs text-tertiary">
                                 {cmd.created_at && (
                                   <span>Created: {new Date(cmd.created_at).toLocaleString()}</span>
                                 )}
@@ -256,14 +256,14 @@ export function Missions() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-500 italic">No commands executed yet</div>
+                        <div className="text-sm text-tertiary italic">No commands executed yet</div>
                       )}
                     </div>
                   )}
 
                   {isExpanded && !details && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="text-sm text-gray-500 italic">Loading details...</div>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <div className="text-sm text-tertiary italic">Loading details...</div>
                     </div>
                   )}
                 </div>
@@ -275,8 +275,8 @@ export function Missions() {
         <Card>
           <div className="text-center py-12">
             <div className="text-4xl mb-4">🎯</div>
-            <div className="text-gray-900 font-medium mb-2">No missions yet</div>
-            <div className="text-sm text-gray-600">
+            <div className="text-primary font-medium mb-2">No missions yet</div>
+            <div className="text-sm text-secondary">
               Create a mission to start queuing commands for agents
             </div>
           </div>

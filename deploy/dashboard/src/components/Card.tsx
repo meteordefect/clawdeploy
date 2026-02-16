@@ -10,17 +10,17 @@ interface CardProps {
 }
 
 export function Card({ children, className = '', title, variant = 'elevated', action, noPadding = false }: CardProps) {
-  const baseStyles = "bg-white overflow-hidden transition-all duration-200";
+  const baseStyles = "bg-card overflow-hidden transition-all duration-200";
   
   const variants = {
-    elevated: "rounded-2xl shadow-card border border-black/5",
-    flat: "rounded-xl border border-gray-200 shadow-none"
+    elevated: "rounded-2xl shadow-card border border-border",
+    flat: "rounded-xl border border-border shadow-none"
   };
 
   return (
     <div className={`${baseStyles} ${variants[variant]} ${className}`}>
       {title && (
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+        <div className="px-6 py-5 border-b border-border flex justify-between items-center">
           <h2 className="text-lg font-serif font-medium text-primary">{title}</h2>
           {action && <div>{action}</div>}
         </div>

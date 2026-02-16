@@ -13,7 +13,7 @@ export function Events() {
   if (loading && !events) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading events...</div>
+        <div className="text-tertiary">Loading events...</div>
       </div>
     );
   }
@@ -30,21 +30,21 @@ export function Events() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900">Events</h1>
-          <p className="text-gray-600 mt-1">System audit trail and activity log</p>
+          <h1 className="text-3xl font-serif font-bold text-primary">Events</h1>
+          <p className="text-secondary mt-1">System audit trail and activity log</p>
         </div>
         <div className="relative">
           <select
             value={limit}
             onChange={(e) => setLimit(parseInt(e.target.value, 10))}
-            className="appearance-none bg-white px-4 py-2 pr-8 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium shadow-sm cursor-pointer"
+            className="select-base"
           >
             <option value="50">Last 50</option>
             <option value="100">Last 100</option>
             <option value="200">Last 200</option>
             <option value="500">Last 500</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-tertiary">
             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
               <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
             </svg>
@@ -54,7 +54,7 @@ export function Events() {
 
       <Card noPadding>
         {events && events.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {events.map((event) => (
               <div
                 key={event.id}
@@ -63,7 +63,7 @@ export function Events() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-subtle text-primary border border-gray-200">
+                      <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-subtle text-primary border border-border">
                         {event.type}
                       </span>
                       <span className="text-xs text-tertiary">
@@ -86,7 +86,7 @@ export function Events() {
                         <summary className="text-xs text-secondary cursor-pointer hover:text-primary transition-colors select-none flex items-center gap-1">
                           <span className="group-open:rotate-90 transition-transform">▶</span> Data Payload
                         </summary>
-                        <pre className="mt-2 text-[10px] bg-subtle p-3 rounded-lg overflow-x-auto text-secondary border border-gray-100">
+                        <pre className="mt-2 text-[10px] bg-subtle p-3 rounded-lg overflow-x-auto text-secondary border border-border">
                           {JSON.stringify(event.data, null, 2)}
                         </pre>
                       </details>
