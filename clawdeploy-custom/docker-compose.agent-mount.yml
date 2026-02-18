@@ -1,7 +1,11 @@
 # Applied to main clawdeploy by custom deploy - openclaw-gateway (chat) loads the clawdeploy-custom skill
+# Build args ensure Docker CLI is installed so OpenClaw can run ./redeploy.sh in the workspace
 
 services:
   openclaw-gateway:
+    build:
+      args:
+        OPENCLAW_DOCKER_APT_PACKAGES: "docker.io"
     volumes:
       - /opt/clawdeploy-custom:/workspace/clawdeploy-custom:rw
       - /var/run/docker.sock:/var/run/docker.sock

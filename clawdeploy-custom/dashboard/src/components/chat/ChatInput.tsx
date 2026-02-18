@@ -205,7 +205,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
 
   return (
     <div className="relative">
-      <div className="flex gap-2 items-end">
+      <div className="flex gap-2 items-start">
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
@@ -215,7 +215,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-3 pr-12 bg-subtle border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed text-primary placeholder:text-tertiary shadow-sm"
+            className="w-full px-4 py-3 pr-12 bg-subtle border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed text-primary placeholder:text-tertiary shadow-sm overflow-hidden"
             style={{ minHeight: '44px', maxHeight: '150px' }}
           />
           {input.length > 0 && (

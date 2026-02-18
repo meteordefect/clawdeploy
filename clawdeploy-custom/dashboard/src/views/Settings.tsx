@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { useDeploy } from '../contexts/DeployContext';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export function Settings() {
+  const { setLocalDeploying } = useDeploy();
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployResult, setDeployResult] = useState<string | null>(null);
   const [rollbackLoading, setRollbackLoading] = useState(false);
@@ -14,6 +16,7 @@ export function Settings() {
     if (!confirm('Rebuild and redeploy this custom dashboard? This may take a few minutes.')) return;
     setDeployLoading(true);
     setDeployResult(null);
+    setLocalDeploying(true);
     try {
       const res = await fetch(`${API_URL}/deploy`, { method: 'POST' });
       const data = await res.json();
@@ -26,6 +29,7 @@ export function Settings() {
       setDeployResult('Request failed: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setDeployLoading(false);
+      setLocalDeploying(false);
     }
   };
 
@@ -33,6 +37,7 @@ export function Settings() {
     if (!confirm('Roll back to the previous version? Use this if the UI is broken.')) return;
     setRollbackLoading(true);
     setRollbackResult(null);
+    setLocalDeploying(true);
     try {
       const res = await fetch(`${API_URL}/deploy/rollback`, { method: 'POST' });
       const data = await res.json();
@@ -45,6 +50,7 @@ export function Settings() {
       setRollbackResult('Request failed: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setRollbackLoading(false);
+      setLocalDeploying(false);
     }
   };
   return (

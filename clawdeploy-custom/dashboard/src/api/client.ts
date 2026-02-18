@@ -150,4 +150,29 @@ export const api = {
     list: () => request<Session[]>('/sessions'),
     get: (id: string) => request<Session>(`/sessions/${id}`),
   },
+
+  deploy: {
+    status: async (): Promise<{
+      deploying: boolean;
+      stage?: 'building_images' | 'restarting_containers';
+      lastResult?: { success: boolean; error?: string };
+    }> => {
+      try {
+        const res = await fetch(`${API_URL}/deploy/status`);
+        if (!res.ok) return { deploying: false };
+        return res.json();
+      } catch {
+        return { deploying: false };
+      }
+    },
+    logs: async (): Promise<{ logs: string }> => {
+      try {
+        const res = await fetch(`${API_URL}/deploy/logs`);
+        if (!res.ok) return { logs: '' };
+        return res.json();
+      } catch {
+        return { logs: '' };
+      }
+    },
+  },
 };

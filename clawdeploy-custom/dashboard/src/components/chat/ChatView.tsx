@@ -6,6 +6,7 @@ import { useOpenClawChat } from '../../hooks/useOpenClawChat';
 import type { ChatSession } from '../../hooks/useOpenClawChat';
 import { ChatInput } from './ChatInput';
 import { usePolling } from '../../hooks/usePolling';
+import { useDeploy } from '../../contexts/DeployContext';
 import { api } from '../../api/client';
 
 // Prefer explicit env; else derive from same host (works with IP, domain, or any URL)
@@ -26,6 +27,7 @@ export function ChatView() {
 
   const { data: openclawAgents, loading: agentsLoading, error: agentsError } = usePolling(() => api.agents.openclawList(), 10000);
 
+  const { deploying } = useDeploy();
   const {
     messages, streamingContent, isConnected, isConnecting, isWaitingForReply, error, sendMessage,
     activeSessionKey, savedSessions, startNewSession, loadSession, deleteSession,
@@ -265,7 +267,7 @@ export function ChatView() {
           )}
 
           {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {error && (
               <div className="text-center text-danger text-sm p-4 bg-danger/10 rounded-lg">
                 {error}
@@ -403,8 +405,14 @@ export function ChatView() {
           <div className="border-t border-border p-4">
             <ChatInput
               onSend={handleSend}
-              disabled={!isConnected}
-              placeholder={isConnected ? "Type your message... Use @agent to mention" : "Waiting for connection..."}
+              disabled={!isConnected || deploying}
+              placeholder={
+                deploying
+                  ? 'Deploy in progress. Chat unavailable.'
+                  : isConnected
+                    ? 'Type your message... Use @agent to mention'
+                    : 'Waiting for connection...'
+              }
             />
             <p className="text-xs text-tertiary mt-2 flex items-center gap-2">
               <AtSign size={12} className="opacity-70" />
