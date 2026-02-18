@@ -39,6 +39,7 @@ export interface Skill {
   emoji: string;
   description: string;
   path: string;
+  content: string; // Full SKILL.md content for prompt injection
   requires?: string[];
 }
 

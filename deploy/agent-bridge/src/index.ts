@@ -38,7 +38,7 @@ async function main() {
     heartbeat.start(skills.length);
     console.log('✓ Heartbeat started\n');
 
-    // Start command poller
+    // Start command poller (pass skills so model knows about custom dashboard, etc.)
     const apiKey = config.zhipuApiKey || config.openaiApiKey || config.moonshotApiKey;
     const poller = new CommandPoller(
       apiClient,
@@ -46,7 +46,8 @@ async function main() {
       apiKey ? {
         model: config.openclawModel,
         apiKey: apiKey,
-      } : undefined
+      } : undefined,
+      skills
     );
     poller.start();
     console.log('✓ Command poller started\n');

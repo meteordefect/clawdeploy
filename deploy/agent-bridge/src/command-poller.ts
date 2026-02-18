@@ -1,5 +1,5 @@
 import type { ControlApiClient } from './control-api-client.js';
-import type { Command } from './types.js';
+import type { Command, Skill } from './types.js';
 import { LLMClient } from './llm-client.js';
 
 export class CommandPoller {
@@ -10,7 +10,8 @@ export class CommandPoller {
   constructor(
     private client: ControlApiClient,
     private intervalMs: number,
-    llmConfig?: { model: string; apiKey: string }
+    llmConfig?: { model: string; apiKey: string },
+    private skills: Skill[] = []
   ) {
     if (llmConfig && llmConfig.apiKey) {
       this.llmClient = new LLMClient(llmConfig);
@@ -89,6 +90,17 @@ export class CommandPoller {
     }
   }
 
+  private buildSystemPrompt(): string {
+    let prompt = 'You are a helpful AI assistant.';
+    if (this.skills.length > 0) {
+      prompt += '\n\nYou have access to these skills. Use them when relevant:\n\n';
+      for (const skill of this.skills) {
+        prompt += `## ${skill.emoji} ${skill.name}\n${skill.content}\n\n`;
+      }
+    }
+    return prompt;
+  }
+
   private async processChat(command: Command): Promise<any> {
     if (!this.llmClient) {
       throw new Error('LLM client not configured - missing API key');
@@ -99,7 +111,7 @@ export class CommandPoller {
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       {
         role: 'system',
-        content: 'You are a helpful AI assistant.',
+        content: this.buildSystemPrompt(),
       },
     ];
 

@@ -1,6 +1,31 @@
+import { useState } from 'react';
 import { Card } from '../components/Card';
+import { Button } from '../components/Button';
+
+const CUSTOM_API_URL = '/dashboard/custom/api';
 
 export function Settings() {
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackResult, setRollbackResult] = useState<string | null>(null);
+
+  const handleRollbackCustom = async () => {
+    if (!confirm('Roll back the custom dashboard to the previous version? Use this if OpenClaw broke the UI.')) return;
+    setRollbackLoading(true);
+    setRollbackResult(null);
+    try {
+      const res = await fetch(`${CUSTOM_API_URL}/deploy/rollback`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setRollbackResult('Rollback complete. ' + (data.output?.slice?.(0, 200) || ''));
+      } else {
+        setRollbackResult('Rollback failed: ' + (data.error || data.message || res.statusText));
+      }
+    } catch (err) {
+      setRollbackResult('Request failed: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setRollbackLoading(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -29,6 +54,26 @@ export function Settings() {
                 {import.meta.env.VITE_API_URL || '/api'}
               </span>
             </div>
+          </div>
+        </Card>
+
+        <Card title="Custom Dashboard">
+          <div className="space-y-4 text-sm">
+            <p className="text-secondary">
+              If OpenClaw edits the custom dashboard and breaks it, roll back to the last working version.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={handleRollbackCustom}
+              disabled={rollbackLoading}
+            >
+              {rollbackLoading ? 'Rolling back...' : 'Rollback Custom Dashboard'}
+            </Button>
+            {rollbackResult && (
+              <p className={`text-xs ${rollbackResult.startsWith('Rollback complete') ? 'text-success' : 'text-danger'}`}>
+                {rollbackResult}
+              </p>
+            )}
           </div>
         </Card>
 

@@ -45,7 +45,7 @@ Access at `https://your-domain/dashboard/custom`.
 2. Copies the agent-bridge mount override to the main clawdeploy
 3. Recreates agent-bridge so it has `/opt/clawdeploy-custom` → `/workspace/clawdeploy-custom`
 
-OpenClaw can then edit `dashboard/` or `api/` and run `./redeploy.sh` to deploy. See `OPENCLAW_SELF_MODIFY.md` for paths and the self-modify skill in `skills/clawdeploy-custom/`.
+OpenClaw can then edit `dashboard/` or `api/` and deploy via the API. See `OPENCLAW_SELF_MODIFY.md` for paths, `OPENCLAW_SETUP.md` for how OpenClaw learns about the custom dashboard, and `skills/clawdeploy-custom/` for the self-modify skill.
 
 ## Prerequisites
 

@@ -8,16 +8,20 @@ export class SkillsParser {
 
   async discoverSkills(): Promise<Skill[]> {
     const skills: Skill[] = [];
+    const paths = this.skillsPath.split(':').map((p) => p.trim()).filter(Boolean);
 
-    try {
-      console.log(`Scanning for skills in: ${this.skillsPath}`);
-      const discovered = await this.scanDirectory(this.skillsPath);
-      skills.push(...discovered);
-      console.log(`Discovered ${skills.length} skill(s)`);
-    } catch (error: any) {
-      console.warn(`Failed to scan skills directory: ${error.message}`);
+    for (const dirPath of paths) {
+      try {
+        console.log(`Scanning for skills in: ${dirPath}`);
+        const discovered = await this.scanDirectory(dirPath);
+        for (const s of discovered) {
+          if (!skills.some((e) => e.name === s.name)) skills.push(s);
+        }
+      } catch (error: any) {
+        console.warn(`Failed to scan skills directory ${dirPath}: ${error.message}`);
+      }
     }
-
+    console.log(`Discovered ${skills.length} skill(s)`);
     return skills;
   }
 
@@ -60,12 +64,14 @@ export class SkillsParser {
       }
 
       const frontmatter = parseYaml(frontmatterMatch[1]);
+      const body = content.slice(frontmatterMatch[0].length).trim();
 
       return {
         name: frontmatter.name || 'Unknown',
         emoji: frontmatter.emoji || '🔧',
         description: frontmatter.description || 'No description',
         path: filePath,
+        content: body || content,
         requires: frontmatter.requires || [],
       };
     } catch (error: any) {
