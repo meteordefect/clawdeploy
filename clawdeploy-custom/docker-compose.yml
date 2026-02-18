@@ -26,6 +26,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
     container_name: clawdeploy-custom-api
+    user: "0:0"  # root - needed to access Docker socket for deploy/rollback
     restart: unless-stopped
     ports:
       - "127.0.0.1:3003:3001"

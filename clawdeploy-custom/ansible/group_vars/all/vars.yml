@@ -3,5 +3,11 @@ project_dir: /opt/clawdeploy-custom
 compose_file: "{{ project_dir }}/docker-compose.yml"
 env_file: "{{ project_dir }}/.env"
 
-# Main clawdeploy dir (for applying agent-bridge mount)
+# Main clawdeploy dir (for applying gateway skills override)
 main_clawdeploy_dir: /opt/clawdeploy
+
+# Domain (from env when running deploy.sh, or inventory host). Used for gateway URL.
+domain: "{{ lookup('env', 'DOMAIN') | default(ansible_host, true) }}"
+# Use ws for IP-only (no SSL), wss for domain with SSL. Override gateway_ws_url for full control.
+gateway_ws_protocol: "{{ 'ws' if domain is match('^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$') else 'wss' }}"
+gateway_ws_url: "{{ gateway_ws_protocol }}://{{ domain }}/gateway/ws"

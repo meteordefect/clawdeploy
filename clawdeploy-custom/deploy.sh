@@ -63,6 +63,17 @@ cmd_status() {
   ssh root@$host "cd /opt/clawdeploy-custom && docker compose ps"
 }
 
+cmd_pull() {
+  if [ ! -f ansible/inventory.ini ]; then
+    echo "Error: ansible/inventory.ini not found."
+    exit 1
+  fi
+  host=$(grep ansible_host ansible/inventory.ini | head -1 | cut -d= -f2)
+  echo "Pulling OpenClaw changes from $host..."
+  rsync -avz --exclude=node_modules --exclude=.git root@$host:/opt/clawdeploy-custom/ .
+  echo "Done. Review changes with git diff."
+}
+
 cmd_help() {
   cat <<EOF
 ClawDeploy Custom - Deploy from local to VPS
@@ -71,6 +82,7 @@ Usage: ./deploy.sh [command]
 
 Commands:
   deploy    Sync code and deploy (Ansible, same as main clawdeploy)
+  pull      Pull OpenClaw edits from VPS to local
   ssh       SSH to VPS
   logs      Tail docker compose logs
   status    Show container status
@@ -86,6 +98,7 @@ EOF
 
 case "${1:-help}" in
   deploy)   cmd_deploy ;;
+  pull)     cmd_pull ;;
   ssh)      cmd_ssh ;;
   logs)     cmd_logs ;;
   status)   cmd_status ;;

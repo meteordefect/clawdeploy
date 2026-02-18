@@ -1,8 +1,10 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useOpenClawChat } from '../hooks/useOpenClawChat';
 
-// Always use same host as page so it works with IP, domain, or any URL
+// Prefer explicit env; else derive from same host (works with IP, domain, or any URL)
 const getGatewayWsUrl = () => {
+  const envUrl = import.meta.env.VITE_GATEWAY_WS_URL;
+  if (envUrl) return envUrl;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/gateway/ws`;
 };

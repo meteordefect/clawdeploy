@@ -18,6 +18,8 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine
 
+RUN apk add --no-cache docker-cli
+
 WORKDIR /app
 
 # Copy package files and install production dependencies only

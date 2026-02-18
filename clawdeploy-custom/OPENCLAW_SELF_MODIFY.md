@@ -28,10 +28,7 @@ Or on the VPS host: `cd /opt/clawdeploy-custom && ./redeploy.sh`
 
 ## Mount required
 
-For OpenClaw to see this project, the main clawdeploy `agent-bridge` must mount it:
+For OpenClaw chat to see this project, the main clawdeploy gateway override must mount it. When you run `./deploy.sh deploy`, `docker-compose.agent-mount.yml` is copied as override and adds:
 
-```yaml
-# In deploy/docker-compose.override.yml or agent-bridge service
-volumes:
-  - /opt/clawdeploy-custom:/workspace/clawdeploy-custom:rw
-```
+- `/opt/clawdeploy-custom` → `/workspace/clawdeploy-custom` (read-write)
+- `skills.load.extraDirs` includes `/workspace/clawdeploy-custom/skills`

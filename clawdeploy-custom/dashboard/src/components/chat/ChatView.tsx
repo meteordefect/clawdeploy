@@ -8,8 +8,10 @@ import { ChatInput } from './ChatInput';
 import { usePolling } from '../../hooks/usePolling';
 import { api } from '../../api/client';
 
-// Always use same host as page so it works with IP, domain, or any URL
+// Prefer explicit env; else derive from same host (works with IP, domain, or any URL)
 const getGatewayWsUrl = () => {
+  const envUrl = import.meta.env.VITE_GATEWAY_WS_URL;
+  if (envUrl) return envUrl;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/gateway/ws`;
 };
@@ -25,7 +27,7 @@ export function ChatView() {
   const { data: openclawAgents, loading: agentsLoading, error: agentsError } = usePolling(() => api.agents.openclawList(), 10000);
 
   const {
-    messages, isConnected, isConnecting, isWaitingForReply, error, sendMessage,
+    messages, streamingContent, isConnected, isConnecting, isWaitingForReply, error, sendMessage,
     activeSessionKey, savedSessions, startNewSession, loadSession, deleteSession,
   } = useOpenClawChat(GATEWAY_WS_URL, GATEWAY_TOKEN);
 
@@ -38,10 +40,10 @@ export function ChatView() {
     }
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages or streaming content arrives
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   const handleSend = async (message: string, _mentionedAgentIds?: string[]) => {
     if (!message.trim() || !isConnected) return;
@@ -358,8 +360,8 @@ export function ChatView() {
               );
             })}
 
-            {/* Thinking indicator while waiting for agent reply */}
-            {isWaitingForReply && (
+            {/* Streaming or thinking indicator while waiting for agent reply */}
+            {isWaitingForReply && messages.length > 0 && (
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-subtle border border-border">
                   <Bot size={16} className="text-secondary" />
@@ -374,14 +376,21 @@ export function ChatView() {
                     </Badge>
                   </div>
                   <div className="inline-block rounded-lg px-4 py-2 bg-subtle border border-border">
-                    <p className="text-sm text-tertiary flex items-center gap-2">
-                      <span className="inline-flex gap-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '0ms' }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '150ms' }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '300ms' }} />
-                      </span>
-                      Thinking…
-                    </p>
+                    {streamingContent ? (
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {streamingContent}
+                        <span className="inline-block w-2 h-4 ml-0.5 bg-primary animate-pulse align-middle" />
+                      </p>
+                    ) : (
+                      <p className="text-sm text-tertiary flex items-center gap-2">
+                        <span className="inline-flex gap-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '300ms' }} />
+                        </span>
+                        Thinking…
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

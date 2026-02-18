@@ -1,8 +1,15 @@
-# Applied to main clawdeploy by custom deploy - mount so agent-bridge can self-modify
+# Applied to main clawdeploy by custom deploy - openclaw-gateway (chat) loads the clawdeploy-custom skill
 
 services:
-  agent-bridge:
+  openclaw-gateway:
     volumes:
       - /opt/clawdeploy-custom:/workspace/clawdeploy-custom:rw
-    environment:
-      OPENCLAW_SKILLS_PATH: ${OPENCLAW_SKILLS_PATH:-/openclaw/skills}:/workspace/clawdeploy-custom/skills
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - sh
+      - -c
+      - >
+        mkdir -p /home/node/.openclaw &&
+        ( [ ! -f /home/node/.openclaw/openclaw.json ] && cp /opt/seed/openclaw-gateway-config.json /home/node/.openclaw/openclaw.json ) ||
+        ( node -e 'const f=require("fs"),p="/home/node/.openclaw/openclaw.json";let c={};try{c=JSON.parse(f.readFileSync(p,"utf8"));}catch(e){};c.gateway=c.gateway||{};c.gateway.controlUi=c.gateway.controlUi||{};c.gateway.controlUi.allowInsecureAuth=true;c.skills=c.skills||{};c.skills.load=c.skills.load||{};c.skills.load.extraDirs=[...(c.skills.load.extraDirs||[]),"/workspace/clawdeploy-custom/skills"];f.writeFileSync(p,JSON.stringify(c,null,2));' ) ;
+        exec node openclaw.mjs gateway --allow-unconfigured --bind lan --port 18789

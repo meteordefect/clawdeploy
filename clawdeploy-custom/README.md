@@ -42,10 +42,10 @@ Access at `https://your-domain/dashboard/custom`.
 
 **Deploy does it automatically.** When you run `./deploy.sh deploy`, it:
 1. Syncs and deploys the custom stack
-2. Copies the agent-bridge mount override to the main clawdeploy
-3. Recreates agent-bridge so it has `/opt/clawdeploy-custom` → `/workspace/clawdeploy-custom`
+2. Copies the gateway skills override to the main clawdeploy (adds clawdeploy-custom skill for chat)
+3. Recreates openclaw-gateway so chat loads the skill
 
-OpenClaw can then edit `dashboard/` or `api/` and deploy via the API. See `OPENCLAW_SELF_MODIFY.md` for paths, `OPENCLAW_SETUP.md` for how OpenClaw learns about the custom dashboard, and `skills/clawdeploy-custom/` for the self-modify skill.
+OpenClaw chat can then edit `dashboard/` or `api/` and deploy via the API. See `OPENCLAW_SELF_MODIFY.md` for paths, `OPENCLAW_SETUP.md` for how OpenClaw learns about the custom dashboard, and `skills/clawdeploy-custom/` for the self-modify skill.
 
 ## Prerequisites
 
