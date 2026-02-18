@@ -1,0 +1,8 @@
+# Applied to main clawdeploy by custom deploy - mount so agent-bridge can self-modify
+
+services:
+  agent-bridge:
+    volumes:
+      - /opt/clawdeploy-custom:/workspace/clawdeploy-custom:rw
+    environment:
+      OPENCLAW_SKILLS_PATH: ${OPENCLAW_SKILLS_PATH:-/openclaw/skills}:/workspace/clawdeploy-custom/skills

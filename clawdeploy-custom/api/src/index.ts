@@ -5,6 +5,7 @@ import { runMigrations } from './db/migrate';
 import { startAgentStatusMonitor } from './lib/agentStatus';
 
 import healthRouter from './routes/health';
+import deployRouter from './routes/deploy';
 import agentsRouter from './routes/agents';
 import commandsRouter from './routes/commands';
 import missionsRouter from './routes/missions';
@@ -26,6 +27,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use('/api', healthRouter);
+app.use('/api', deployRouter);
 app.use('/api', agentsRouter);
 app.use('/api', commandsRouter);
 app.use('/api', missionsRouter);

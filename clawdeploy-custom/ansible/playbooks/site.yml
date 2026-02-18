@@ -1,0 +1,83 @@
+---
+- name: Deploy ClawDeploy Custom (dashboard + api)
+  hosts: control_plane
+  become: yes
+
+  tasks:
+    - name: Create project directory
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../../docker-compose.yml
+        dest: "{{ compose_file }}"
+        mode: '0644'
+
+    - name: Copy .env file
+      copy:
+        src: ../../.env
+        dest: "{{ env_file }}"
+        mode: '0600'
+
+    - name: Copy API source
+      synchronize:
+        src: ../../api/
+        dest: "{{ project_dir }}/api/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=dist"
+
+    - name: Copy Dashboard source
+      synchronize:
+        src: ../../dashboard/
+        dest: "{{ project_dir }}/dashboard/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=dist"
+
+    - name: Copy redeploy.sh (for OpenClaw self-deploy)
+      copy:
+        src: ../../redeploy.sh
+        dest: "{{ project_dir }}/redeploy.sh"
+        mode: '0755'
+
+    - name: Copy skills (for OpenClaw self-modify)
+      synchronize:
+        src: ../../skills/
+        dest: "{{ project_dir }}/skills/"
+        delete: yes
+
+    - name: Build Docker images
+      shell: cd {{ project_dir }} && docker compose build --no-cache
+      environment:
+        DOCKER_BUILDKIT: "1"
+
+    - name: Start services
+      shell: cd {{ project_dir }} && docker compose up -d --force-recreate
+      environment:
+        COMPOSE_HTTP_TIMEOUT: "200"
+
+    - name: Check main clawdeploy exists
+      stat:
+        path: "{{ main_clawdeploy_dir }}/docker-compose.yml"
+      register: main_compose_stat
+
+    - name: Copy agent-bridge mount override to main clawdeploy
+      copy:
+        src: ../../docker-compose.agent-mount.yml
+        dest: "{{ main_clawdeploy_dir }}/docker-compose.override.yml"
+        mode: '0644'
+      when: main_compose_stat.stat.exists | default(false)
+
+    - name: Recreate agent-bridge with mount (so OpenClaw can self-modify)
+      shell: >
+        cd {{ main_clawdeploy_dir }}
+        && docker compose --profile agent-bridge up -d agent-bridge --force-recreate
+      when: main_compose_stat.stat.exists | default(false)
+      ignore_errors: yes
+      changed_when: true

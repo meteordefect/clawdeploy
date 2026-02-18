@@ -33,8 +33,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-clawdeploy_custom}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-clawdeploy_custom}
       PORT: 3001
       OPENCLAW_DATA_PATH: /openclaw-data
+      CLAWDEPLOY_PROJECT_PATH: ${CLAWDEPLOY_PROJECT_PATH:-/opt/clawdeploy-custom}
     volumes:
       - openclaw-data:/openclaw-data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - custom
     depends_on:
