@@ -26,7 +26,7 @@ export function ChatView() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {
-    messages, isConnected, isConnecting, error, sendMessage,
+    messages, streamingContent, isConnected, isConnecting, isWaitingForReply, error, sendMessage,
     activeSessionKey, savedSessions, startNewSession, loadSession, deleteSession,
     streamingContent, isWaitingForReply,
   } = useOpenClawChat(GATEWAY_WS_URL, GATEWAY_TOKEN);
@@ -40,10 +40,10 @@ export function ChatView() {
     }
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages or streaming content arrives
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   const handleSend = async (message: string, _mentionedAgentIds?: string[]) => {
     if (!message.trim() || !isConnected) return;
@@ -260,6 +260,42 @@ export function ChatView() {
                 <p className="text-xs mt-2 text-tertiary">
                   Connected to: {GATEWAY_WS_URL}
                 </p>
+              </div>
+            )}
+
+            {/* Streaming or thinking indicator while waiting for agent reply */}
+            {isWaitingForReply && messages.length > 0 && (
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-subtle border border-border">
+                  <Bot size={16} className="text-secondary" />
+                </div>
+                <div className="flex-1 max-w-[70%] text-left">
+                  <div className="mb-1">
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-2 py-0.5 bg-success/15 text-success border-success/30"
+                    >
+                      OpenClaw
+                    </Badge>
+                  </div>
+                  <div className="inline-block rounded-lg px-4 py-2 bg-subtle border border-border">
+                    {streamingContent ? (
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {streamingContent}
+                        <span className="inline-block w-2 h-4 ml-0.5 bg-primary animate-pulse align-middle" />
+                      </p>
+                    ) : (
+                      <p className="text-sm text-tertiary flex items-center gap-2">
+                        <span className="inline-flex gap-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" style={{ animationDelay: '300ms' }} />
+                        </span>
+                        Thinking…
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

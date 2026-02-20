@@ -211,6 +211,18 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     error: null,
   }));
 
+  function extractTextFromMessage(message: unknown): string {
+    const m = message as { content?: Array<{ type: string; text?: string }> | string };
+    if (typeof m?.content === 'string') return m.content;
+    if (Array.isArray(m?.content)) {
+      return m.content
+        .filter((c: { type: string; text?: string }) => c.type === 'text' && c.text)
+        .map((c: { text?: string }) => c.text || '')
+        .join('');
+    }
+    return '';
+  }
+
   const wsRef = useRef<WebSocket | null>(null);
   const sessionKeyRef = useRef<string>(initialSessionKey);
   const clientIdRef = useRef<string>('webchat-ui');
