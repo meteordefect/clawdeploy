@@ -152,6 +152,17 @@ export const api = {
   },
 
   deploy: {
+    list: (limit = 20) =>
+      request<{ deploys: Array<{
+        id: string;
+        status: string;
+        stage: string | null;
+        output: string | null;
+        error: string | null;
+        started_at: string;
+        created_at: string;
+        updated_at: string;
+      }> }>(`/deploy/list?limit=${limit}`),
     status: async (): Promise<{
       deploying: boolean;
       stage?: 'building_images' | 'restarting_containers';

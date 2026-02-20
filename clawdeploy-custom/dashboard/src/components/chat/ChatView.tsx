@@ -112,54 +112,67 @@ export function ChatView() {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
-          <p className="text-secondary mt-1">Talk to your agents directly • Use @ to mention specific agents</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary bg-subtle hover:bg-subtle/80 border border-border rounded-lg transition-colors"
-          >
-            <Plus size={14} />
-            New Chat
-          </button>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors ${
-              showHistory
-                ? 'text-accent-light bg-accent/15 border-accent/30'
-                : 'text-secondary hover:text-primary bg-subtle hover:bg-subtle/80 border-border'
-            }`}
-          >
-            <History size={14} />
-            History
-            {savedSessions.length > 0 && (
-              <span className="ml-1 text-xs bg-accent/20 text-accent-light px-1.5 py-0.5 rounded-full">
-                {savedSessions.length}
-              </span>
-            )}
-          </button>
-
-          <div className="flex items-center gap-2 ml-2 pl-3 border-l border-border">
-            {isConnecting ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
-                <span className="text-sm text-secondary">Connecting...</span>
-              </>
-            ) : isConnected ? (
-              <>
-                <Wifi size={16} className="text-success" />
-                <span className="text-sm text-secondary">Connected</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={16} className="text-danger" />
-                <span className="text-sm text-danger">Disconnected</span>
-              </>
-            )}
+    <div className="animate-in fade-in duration-300 h-full flex flex-col w-full min-w-0">
+      {/* Header: responsive layout - mobile: title+icon row, then buttons row; desktop: single row */}
+      <div className="mb-4 space-y-3 md:space-y-0">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center justify-between md:block">
+            <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
+            <p className="hidden md:block text-secondary mt-1">Talk to your agents directly • Use @ to mention specific agents</p>
+            {/* Mobile: connection icon only, next to title */}
+            <div className="flex items-center gap-2 md:hidden">
+              {isConnecting ? (
+                <div className="w-2 h-2 rounded-full bg-warning animate-pulse" aria-label="Connecting"></div>
+              ) : isConnected ? (
+                <Wifi size={16} className="text-success" aria-label="Connected" />
+              ) : (
+                <WifiOff size={16} className="text-danger" aria-label="Disconnected" />
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={handleNewChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary bg-subtle hover:bg-subtle/80 border border-border rounded-lg transition-colors"
+            >
+              <Plus size={14} />
+              New Chat
+            </button>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors ${
+                showHistory
+                  ? 'text-accent-light bg-accent/15 border-accent/30'
+                  : 'text-secondary hover:text-primary bg-subtle hover:bg-subtle/80 border-border'
+              }`}
+            >
+              <History size={14} />
+              History
+              {savedSessions.length > 0 && (
+                <span className="ml-1 text-xs bg-accent/20 text-accent-light px-1.5 py-0.5 rounded-full">
+                  {savedSessions.length}
+                </span>
+              )}
+            </button>
+            {/* Desktop: connection icon + text */}
+            <div className="hidden md:flex items-center gap-2 ml-2 pl-3 border-l border-border">
+              {isConnecting ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
+                  <span className="text-sm text-secondary">Connecting...</span>
+                </>
+              ) : isConnected ? (
+                <>
+                  <Wifi size={16} className="text-success" />
+                  <span className="text-sm text-secondary">Connected</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff size={16} className="text-danger" />
+                  <span className="text-sm text-danger">Disconnected</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -191,10 +204,11 @@ export function ChatView() {
         )}
       </div>
 
-      <div className="bg-card rounded-2xl shadow-card border border-border flex-1 flex flex-row min-h-0 max-h-[calc(100vh-250px)] overflow-hidden">
+      {/* Chat area: no card on mobile, card on desktop */}
+      <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full max-h-[calc(100vh-250px)] overflow-visible md:overflow-hidden md:bg-card md:rounded-2xl md:shadow-card md:border md:border-border">
         {/* Session History Sidebar */}
         {showHistory && (
-          <div className="w-72 border-r border-border flex flex-col bg-subtle/30 flex-shrink-0">
+          <div className="w-48 md:w-72 border-r border-border flex flex-col bg-subtle/30 flex-shrink-0">
             <div className="p-3 border-b border-border">
               <h3 className="text-sm font-semibold text-primary">Chat History</h3>
               <p className="text-xs text-tertiary mt-0.5">
@@ -244,7 +258,7 @@ export function ChatView() {
         )}
 
         {/* Chat Main Area */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
           {/* Connection notice when gateway is unavailable */}
           {!isConnected && !isConnecting && (
             <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 m-4 mb-0">
@@ -267,7 +281,7 @@ export function ChatView() {
           )}
 
           {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 min-w-0">
             {error && (
               <div className="text-center text-danger text-sm p-4 bg-danger/10 rounded-lg">
                 {error}
@@ -402,7 +416,7 @@ export function ChatView() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-border p-4 w-full">
+          <div className="border-t border-border p-4 min-w-0">
             <ChatInput
               onSend={handleSend}
               disabled={!isConnected || deploying}
@@ -414,7 +428,7 @@ export function ChatView() {
                     : 'Waiting for connection...'
               }
             />
-            <p className="text-xs text-tertiary mt-2 flex items-center gap-2">
+            <p className="hidden md:flex text-xs text-tertiary mt-2 items-center gap-2">
               <AtSign size={12} className="opacity-70" />
               Type <span className="font-mono bg-subtle px-1 rounded">@agentname</span> to mention specific agents
             </p>

@@ -405,12 +405,25 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                 isWaitingForReply: false,
               }));
             } else {
+              const errorMsg = payload.state === 'error' ? (payload.errorMessage ?? 'Chat error') : '';
               streamingContentRef.current = '';
+              // On error, add assistant message so user sees what went wrong in the thread
+              const errorMessage: Message | null =
+                errorMsg
+                  ? {
+                      id: `assistant-${Date.now()}-error`,
+                      role: 'assistant' as const,
+                      content: `Error: ${errorMsg}`,
+                      timestamp: Date.now(),
+                      sessionKey: payload.sessionKey,
+                    }
+                  : null;
               setState(prev => ({
                 ...prev,
+                messages: errorMessage ? [...prev.messages, errorMessage] : prev.messages,
                 streamingContent: null,
                 isWaitingForReply: false,
-                error: payload.state === 'error' ? (payload.errorMessage ?? 'Chat error') : prev.error,
+                error: errorMsg || prev.error,
               }));
             }
           }

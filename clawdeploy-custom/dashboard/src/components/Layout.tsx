@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Target, FolderOpen, MessageSquare, ScrollText, Settings as SettingsIcon, Menu, X, Sun, Moon, LucideIcon } from 'lucide-react';
+import { BarChart3, Target, FolderOpen, MessageSquare, ScrollText, Rocket, Settings as SettingsIcon, Menu, X, Sun, Moon, LucideIcon } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { path: '/files', label: 'Files', icon: FolderOpen },
   { path: '/sessions', label: 'Sessions', icon: ScrollText },
   { path: '/events', label: 'Events', icon: BarChart3 },
+  { path: '/deploys', label: 'Deploys', icon: Rocket },
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -91,22 +92,19 @@ export function Layout({ children }: LayoutProps) {
         {/* Mobile Header */}
         <div className="md:hidden sticky top-0 z-40 bg-card/90 backdrop-blur-lg border-b border-border">
           <div className="flex items-center justify-between px-4 py-3">
-            <h1 className="text-xl font-serif font-bold text-primary">ClawDeploy</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg hover:bg-subtle transition-colors"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-subtle transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
 
@@ -158,7 +156,7 @@ export function Layout({ children }: LayoutProps) {
               })}
             </nav>
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
-              <p className="text-xs text-tertiary">ClawDeploy v3.0</p>
+              <p className="text-xs text-tertiary">Pincher</p>
               <p className="text-xs text-tertiary mt-1">© 2026 Friend Labs</p>
             </div>
           </div>

@@ -161,7 +161,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
   // Select a suggestion
   const handleSelectSuggestion = (m: Mentionable) => {
     const beforeMention = input.slice(0, mentionStart);
-    const afterMention = input.slice(mentionStart + mentionQuery.length + 1); // +1 for @
+    const afterMention = input.slice(mentionStart + mentionQuery.length + 1);
     const newValue = `${beforeMention}@${m.token} ${afterMention}`;
 
     setInput(newValue);
@@ -171,7 +171,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
     setTimeout(() => {
       const textarea = textareaRef.current;
       if (textarea) {
-        const newCursorPos = mentionStart + m.token.length + 2; // +2 for @ and space
+        const newCursorPos = mentionStart + m.token.length + 2;
         textarea.focus();
         textarea.setSelectionRange(newCursorPos, newCursorPos);
       }
@@ -204,9 +204,9 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
   }, []);
 
   return (
-    <div className="relative w-full">
-      <div className="flex gap-2 items-start">
-        <div className="flex-1 relative">
+    <div className="relative">
+      <div className="flex gap-2 items-end min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <textarea
             ref={textareaRef}
             value={input}
@@ -234,7 +234,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
         <button
           onClick={handleSend}
           disabled={!input.trim() || disabled}
-          className="px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+          className="flex-shrink-0 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
         >
           <Send size={18} />
         </button>

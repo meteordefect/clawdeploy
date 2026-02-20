@@ -112,6 +112,20 @@ async function createDeploy() {
   return (result as any)[0].id;
 }
 
+router.get('/deploy/list', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const result = await query(
+      `SELECT id, status, stage, output, error, started_at, created_at, updated_at
+       FROM deploys ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    res.json({ deploys: result as any[] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch deploy history' });
+  }
+});
+
 router.get('/deploy/status', async (req: Request, res: Response) => {
   try {
     const result = await query(
