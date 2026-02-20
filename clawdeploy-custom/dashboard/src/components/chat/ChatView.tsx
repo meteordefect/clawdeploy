@@ -123,9 +123,9 @@ export function ChatView() {
   };
 
   return (
-    <div className="animate-in fade-in duration-300 h-full flex flex-col w-full min-w-0 max-h-[calc(100vh-140px)] overflow-hidden md:h-[calc(100vh-96px)] md:max-h-none md:overflow-visible">
-      {/* Header: responsive layout - mobile: title+icon row, then buttons row; desktop: single row */}
-      <div className="mb-4 space-y-3 md:space-y-0">
+    <div className="animate-in fade-in duration-300 h-screen flex flex-col w-full overflow-hidden">
+      {/* Header: sticky header on desktop, normal on mobile */}
+      <header className="flex-shrink-0 sticky top-0 z-50 bg-surface border-b border-border/50 px-4 pt-4 pb-2 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-between md:block">
             <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
@@ -186,82 +186,84 @@ export function ChatView() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Available OpenClaw agents - always visible */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-secondary uppercase tracking-wide">Available agents</span>
-        {agentsLoading && !openclawAgents && (
-          <span className="text-xs text-tertiary">Loading…</span>
-        )}
-        {agentsError && (
-          <span className="text-xs text-tertiary" title={agentsError.message}>Could not load agents</span>
-        )}
-        {openclawAgents && openclawAgents.agents.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {openclawAgents.agents.map((a) => (
-              <span
-                key={a.id}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-subtle text-primary border border-border rounded-lg"
-              >
-                <Bot size={12} className="text-tertiary" />
-                {a.name}
-              </span>
-            ))}
-          </div>
-        )}
-        {openclawAgents && openclawAgents.agents.length === 0 && !agentsLoading && (
-          <span className="text-xs text-tertiary">No agents in OpenClaw config (agents.list in openclaw.json)</span>
-        )}
-      </div>
-
-      {/* Chat area: no card on mobile, card on desktop */}
-      <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full md:bg-card md:rounded-2xl md:shadow-card md:border md:border-border overflow-hidden">
-        {/* Session History Sidebar */}
-        {showHistory && (
-          <div className="w-48 md:w-72 border-r border-border flex flex-col bg-subtle/30 flex-shrink-0">
-            <div className="p-3 border-b border-border">
-              <h3 className="text-sm font-semibold text-primary">Chat History</h3>
-              <p className="text-xs text-tertiary mt-0.5">
-                {savedSessions.length} conversation{savedSessions.length !== 1 ? 's' : ''}
-              </p>
+      {/* Main content area - scrollable */}
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto">
+        {/* Available OpenClaw agents - always visible */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-secondary uppercase tracking-wide">Available agents</span>
+          {agentsLoading && !openclawAgents && (
+            <span className="text-xs text-tertiary">Loading…</span>
+          )}
+          {agentsError && (
+            <span className="text-xs text-tertiary" title={agentsError.message}>Could not load agents</span>
+          )}
+          {openclawAgents && openclawAgents.agents.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {openclawAgents.agents.map((a) => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-subtle text-primary border border-border rounded-lg"
+                >
+                  <Bot size={12} className="text-tertiary" />
+                  {a.name}
+                </span>
+              ))}
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {savedSessions.length === 0 ? (
-                <div className="text-center text-tertiary text-xs p-6">
-                  <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
-                  No saved conversations
-                </div>
-              ) : (
-                savedSessions.map((session) => (
-                  <button
-                    key={session.key}
-                    onClick={() => handleSelectSession(session)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group ${
-                      session.key === activeSessionKey
-                        ? 'bg-accent/15 border border-accent/30'
-                        : 'hover:bg-subtle border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm truncate flex-1 ${
-                        session.key === activeSessionKey ? 'text-accent-light font-medium' : 'text-primary'
-                      }`}>
-                        {session.preview || 'New conversation'}
-                      </p>
-                      <button
-                        onClick={(e) => handleDeleteSession(e, session.key)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-danger/20 text-tertiary hover:text-danger transition-all flex-shrink-0"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Clock size={10} className="text-tertiary" />
-                      <span className="text-xs text-tertiary">{formatSessionTime(session.timestamp)}</span>
-                      <span className="text-xs text-tertiary">• {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}</span>
-                    </div>
-                  </button>
+          )}
+          {openclawAgents && openclawAgents.agents.length === 0 && !agentsLoading && (
+            <span className="text-xs text-tertiary">No agents in OpenClaw config (agents.list in openclaw.json)</span>
+          )}
+        </div>
+
+        {/* Chat area: no card on mobile, card on desktop */}
+        <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full md:bg-card md:rounded-2xl md:shadow-card md:border md:border-border md:overflow-hidden relative">
+          {/* Session History Sidebar - only on desktop */}
+          {showHistory && (
+            <div className="hidden md:flex w-48 md:w-72 border-r border-border flex-col bg-subtle/30 flex-shrink-0">
+              <div className="p-3 border-b border-border">
+                <h3 className="text-sm font-semibold text-primary">Chat History</h3>
+                <p className="text-xs text-tertiary mt-0.5">
+                  {savedSessions.length} conversation{savedSessions.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {savedSessions.length === 0 ? (
+                  <div className="text-center text-tertiary text-xs p-6">
+                    <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
+                    No saved conversations
+                  </div>
+                ) : (
+                  savedSessions.map((session) => (
+                    <button
+                      key={session.key}
+                      onClick={() => handleSelectSession(session)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group ${
+                        session.key === activeSessionKey
+                          ? 'bg-accent/15 border border-accent/30'
+                          : 'hover:bg-subtle border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm truncate flex-1 ${
+                          session.key === activeSessionKey ? 'text-accent-light font-medium' : 'text-primary'
+                        }`}>
+                          {session.preview || 'New conversation'}
+                        </p>
+                        <button
+                          onClick={(e) => handleDeleteSession(e, session.key)}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-danger/20 text-tertiary hover:text-danger transition-all flex-shrink-0"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Clock size={10} className="text-tertiary" />
+                        <span className="text-xs text-tertiary">{formatSessionTime(session.timestamp)}</span>
+                        <span className="text-xs text-tertiary">• {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    </button>
                 ))
               )}
             </div>
@@ -435,7 +437,7 @@ export function ChatView() {
                 deploying
                   ? 'Deploy in progress. Chat unavailable.'
                   : isConnected
-                    ? (isMobile ? 'type @agent to mention' : 'Type your message... Use @agent to mention')
+                    ? 'Type your message... Use @agent to mention'
                     : 'Waiting for connection...'
               }
             />
@@ -445,6 +447,7 @@ export function ChatView() {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

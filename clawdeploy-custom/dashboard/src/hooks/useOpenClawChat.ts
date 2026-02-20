@@ -28,6 +28,7 @@ interface ChatState {
 
 const SESSIONS_INDEX_KEY = 'openclaw-chat-sessions';
 const CURRENT_SESSION_KEY = 'openclaw-chat-active-session';
+const STREAMING_KEY = 'openclaw-chat-streaming';
 const msgStorageKey = (key: string) => `openclaw-chat-msg-${key}`;
 
 export function loadSessionsIndex(): ChatSession[] {
@@ -50,26 +51,53 @@ function saveMessagesToStorage(sessionKey: string, messages: Message[]) {
   catch { /* storage full */ }
 }
 
-/** Fixed session key for webchat - all devices/tabs share this (maps to OpenClaw agent main) */
-const MAIN_SESSION_KEY = 'main';
-
-function getMainSessionKey(): string {
-  return MAIN_SESSION_KEY;
+function loadStreamingFromStorage(): { sessionKey: string; content: string; timestamp: number } | null {
+  try {
+    const stored = localStorage.getItem(STREAMING_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    // Only return if less than 5 minutes old (avoid stale streaming content)
+    if (Date.now() - parsed.timestamp < 300000) {
+      return parsed;
+    }
+    // Clear old streaming content
+    localStorage.removeItem(STREAMING_KEY);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-function isLegacyRandomKey(key: string): boolean {
-  return key.startsWith('dashboard-') && /dashboard-[a-z0-9]+-\d+/.test(key);
+function saveStreamingToStorage(sessionKey: string, content: string) {
+  try {
+    localStorage.setItem(STREAMING_KEY, JSON.stringify({
+      sessionKey,
+      content,
+      timestamp: Date.now(),
+    }));
+  } catch { /* storage full */ }
+}
+
+function clearStreamingFromStorage() {
+  try { localStorage.removeItem(STREAMING_KEY); }
+  catch { /* storage full */ }
+}
+
+function generateSessionKey(): string {
+  return `dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
+}
+
+function getMainSessionKey(): string {
+  return 'webchat-main';
 }
 
 function getOrCreateCurrentSessionKey(): string {
   const stored = localStorage.getItem(CURRENT_SESSION_KEY);
-  // Migrate from legacy random keys to shared main - prevents fragmented history
-  if (!stored || isLegacyRandomKey(stored)) {
-    const key = getMainSessionKey();
-    localStorage.setItem(CURRENT_SESSION_KEY, key);
-    return key;
-  }
-  return stored;
+  if (stored) return stored;
+  // Use stable session key for main webchat session (shared across devices)
+  const key = getMainSessionKey();
+  localStorage.setItem(CURRENT_SESSION_KEY, key);
+  return key;
 }
 
 function updateSessionsIndex(sessionKey: string, messages: Message[]): ChatSession[] {
@@ -109,12 +137,17 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
   const [activeSessionKey, setActiveSessionKey] = useState<string>(initialSessionKey);
   const [savedSessions, setSavedSessions] = useState<ChatSession[]>(loadSessionsIndex);
   const streamingContentRef = useRef<string>('');
+
+  // Try to restore streaming content from localStorage
+  const savedStreaming = loadStreamingFromStorage();
+  const restoredStreaming = savedStreaming?.sessionKey === initialSessionKey ? savedStreaming.content : null;
+
   const [state, setState] = useState<ChatState>(() => ({
     messages: loadMessagesFromStorage(initialSessionKey),
-    streamingContent: null,
+    streamingContent: restoredStreaming || null,
     isConnected: false,
     isConnecting: false,
-    isWaitingForReply: false,
+    isWaitingForReply: !!restoredStreaming, // If we have streaming content, we were waiting for reply
     error: null,
   }));
 
@@ -156,6 +189,16 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
       setSavedSessions(updated);
     }
   }, [state.messages]);
+
+  // Persist or clear streaming content when it changes
+  useEffect(() => {
+    const key = sessionKeyRef.current;
+    if (state.streamingContent) {
+      saveStreamingToStorage(key, state.streamingContent);
+    } else {
+      clearStreamingFromStorage();
+    }
+  }, [state.streamingContent]);
 
   // Send RPC request to gateway
   const sendRpc = useCallback((method: string, params: any = {}): Promise<any> => {
@@ -218,27 +261,16 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     }
   }, [sendRpc]);
 
-  // Start a new chat session (resets main - shared across devices)
-  const startNewSession = useCallback(async () => {
-    const key = getMainSessionKey();
-    localStorage.setItem(CURRENT_SESSION_KEY, key);
-    sessionKeyRef.current = key;
-    setActiveSessionKey(key);
+  // Start a new chat session
+  const startNewSession = useCallback(() => {
+    const newKey = generateSessionKey();
+    localStorage.setItem(CURRENT_SESSION_KEY, newKey);
+    sessionKeyRef.current = newKey;
+    setActiveSessionKey(newKey);
     streamingContentRef.current = '';
+    clearStreamingFromStorage(); // Clear any saved streaming content
     setState(prev => ({ ...prev, messages: [], streamingContent: null }));
-
-    // Send /new to OpenClaw to reset session context on backend
-    try {
-      await sendRpc('chat.send', {
-        sessionKey: key,
-        message: '/new',
-        idempotencyKey: `new-${Date.now()}`,
-        timeoutMs: 0,
-      });
-    } catch (err) {
-      console.error('[OpenClaw] Failed to reset session:', err);
-    }
-  }, [sendRpc]);
+  }, []);
 
   // Load an existing session's messages
   const loadSession = useCallback((key: string) => {
@@ -247,7 +279,17 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     sessionKeyRef.current = key;
     setActiveSessionKey(key);
     streamingContentRef.current = '';
-    setState(prev => ({ ...prev, messages, streamingContent: null }));
+
+    // Try to restore streaming content for this session
+    const savedStreaming = loadStreamingFromStorage();
+    const restoredStreaming = savedStreaming?.sessionKey === key ? savedStreaming.content : null;
+
+    setState(prev => ({
+      ...prev,
+      messages,
+      streamingContent: restoredStreaming || null,
+      isWaitingForReply: !!restoredStreaming,
+    }));
   }, []);
 
   // Delete a session from history
@@ -257,11 +299,11 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     saveSessionsIndex(sessions);
     setSavedSessions(sessions);
     if (key === sessionKeyRef.current) {
-      const mainKey = getMainSessionKey();
-      localStorage.setItem(CURRENT_SESSION_KEY, mainKey);
-      sessionKeyRef.current = mainKey;
-      setActiveSessionKey(mainKey);
-      setState(prev => ({ ...prev, messages: loadMessagesFromStorage(mainKey) }));
+      const newKey = generateSessionKey();
+      localStorage.setItem(CURRENT_SESSION_KEY, newKey);
+      sessionKeyRef.current = newKey;
+      setActiveSessionKey(newKey);
+      setState(prev => ({ ...prev, messages: [] }));
     }
   }, []);
 
@@ -313,6 +355,10 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                     isConnecting: false,
                     error: null,
                   }));
+                  // Request chat history for current session after connecting
+                  sendRpc('chat.history', { sessionKey: sessionKeyRef.current }).catch(err => {
+                    console.error('[OpenClaw] Failed to load history:', err);
+                  });
                 } else {
                   console.error('[OpenClaw] Connect failed:', result.error);
                   setState(prev => ({
@@ -448,6 +494,32 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
                 error: errorMsg || prev.error,
               }));
             }
+          } else if (payload.state === 'history') {
+            // Gateway is sending chat history - load all messages
+            const historyMessages: Message[] = (payload.messages || [])
+              .filter((m: unknown) => {
+                // Filter to only Message objects with valid structure
+                const msg = m as { role?: string; timestamp?: number; content?: unknown };
+                return msg.role === 'user' || msg.role === 'assistant';
+              })
+              .map((m: unknown) => {
+                const msg = m as { role?: string; timestamp?: number; content?: unknown; id?: string };
+                const text = typeof msg.content === 'string'
+                  ? msg.content
+                  : extractTextFromMessage(msg.content);
+                return {
+                  id: msg.id || `${msg.role}-${msg.timestamp}`,
+                  role: (msg.role as 'user' | 'assistant') || 'assistant',
+                  content: text || '',
+                  timestamp: msg.timestamp || Date.now(),
+                  sessionKey: payload.sessionKey,
+                };
+              });
+            setState(prev => ({
+              ...prev,
+              messages: historyMessages,
+              streamingContent: null,
+            }));
           }
         }
       } catch (err) {
