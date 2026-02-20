@@ -54,10 +54,15 @@ function generateSessionKey(): string {
   return `dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
 }
 
+function getMainSessionKey(): string {
+  return 'webchat-main';
+}
+
 function getOrCreateCurrentSessionKey(): string {
   const stored = localStorage.getItem(CURRENT_SESSION_KEY);
   if (stored) return stored;
-  const key = generateSessionKey();
+  // Use stable session key for main webchat session (shared across devices)
+  const key = getMainSessionKey();
   localStorage.setItem(CURRENT_SESSION_KEY, key);
   return key;
 }

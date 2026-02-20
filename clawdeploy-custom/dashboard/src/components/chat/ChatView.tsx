@@ -23,7 +23,18 @@ const GATEWAY_TOKEN = import.meta.env.VITE_GATEWAY_TOKEN || '';
 export function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const { data: openclawAgents, loading: agentsLoading, error: agentsError } = usePolling(() => api.agents.openclawList(), 10000);
 
@@ -112,7 +123,7 @@ export function ChatView() {
   };
 
   return (
-    <div className="animate-in fade-in duration-300 h-full flex flex-col w-full min-w-0">
+    <div className="animate-in fade-in duration-300 h-full flex flex-col w-full min-w-0 max-h-[calc(100vh-140px)] overflow-hidden md:h-[calc(100vh-96px)] md:max-h-none md:overflow-visible">
       {/* Header: responsive layout - mobile: title+icon row, then buttons row; desktop: single row */}
       <div className="mb-4 space-y-3 md:space-y-0">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -205,7 +216,7 @@ export function ChatView() {
       </div>
 
       {/* Chat area: no card on mobile, card on desktop */}
-      <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full max-h-[calc(100vh-250px)] overflow-visible md:overflow-hidden md:bg-card md:rounded-2xl md:shadow-card md:border md:border-border">
+      <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full md:bg-card md:rounded-2xl md:shadow-card md:border md:border-border overflow-hidden">
         {/* Session History Sidebar */}
         {showHistory && (
           <div className="w-48 md:w-72 border-r border-border flex flex-col bg-subtle/30 flex-shrink-0">
@@ -341,7 +352,7 @@ export function ChatView() {
 
                     {/* Message Content */}
                     <div
-                      className={`inline-block rounded-lg px-4 py-2 ${
+                      className={`inline-block rounded-lg ${isMobile ? 'px-2 py-1.5' : 'px-4 py-2'} ${
                         msg.role === 'user'
                           ? 'bg-accent text-white'
                           : 'bg-subtle border border-border'
@@ -391,7 +402,7 @@ export function ChatView() {
                       OpenClaw
                     </Badge>
                   </div>
-                  <div className="inline-block rounded-lg px-4 py-2 bg-subtle border border-border">
+                  <div className={`inline-block rounded-lg ${isMobile ? 'px-2 py-1.5' : 'px-4 py-2'} bg-subtle border border-border`}>
                     {streamingContent ? (
                       <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                         {streamingContent}
@@ -424,7 +435,7 @@ export function ChatView() {
                 deploying
                   ? 'Deploy in progress. Chat unavailable.'
                   : isConnected
-                    ? 'Type your message... Use @agent to mention'
+                    ? (isMobile ? 'type @agent to mention' : 'Type your message... Use @agent to mention')
                     : 'Waiting for connection...'
               }
             />

@@ -33,7 +33,7 @@ function mentionMatchesQuery(m: Mentionable, query: string): boolean {
   );
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Type a message... Use @ to mention agents" }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, placeholder = "mention for a specific agent" }: ChatInputProps) {
   const [input, setInput] = useState('');
   const [mentionables, setMentionables] = useState<Mentionable[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -41,8 +41,19 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStart, setMentionStart] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Load mentionables from OpenClaw (agents + subagents, no DB)
   useEffect(() => {
@@ -205,14 +216,14 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
 
   return (
     <div className="relative">
-      <div className="flex gap-2 items-end min-w-0">
+      <div className="flex gap-2 min-w-0 items-start">
         <div className="flex-1 min-w-0 relative">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={isMobile ? "type @agent to mention" : placeholder}
             disabled={disabled}
             rows={1}
             className="w-full px-4 py-3 pr-12 bg-subtle border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed text-primary placeholder:text-tertiary shadow-sm overflow-hidden"
@@ -234,9 +245,10 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
         <button
           onClick={handleSend}
           disabled={!input.trim() || disabled}
-          className="flex-shrink-0 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+          className="flex-shrink-0 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-sm"
+          style={{ width: '44px', height: '44px' }}
         >
-          <Send size={18} />
+          <Send size={isMobile ? 16 : 18} />
         </button>
       </div>
 
