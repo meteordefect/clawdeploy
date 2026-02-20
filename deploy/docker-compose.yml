@@ -96,10 +96,10 @@ services:
   # Start with: docker compose --profile openclaw-gateway up -d openclaw-gateway
   openclaw-gateway:
     build:
-      context: ../openclaw-source
+      context: ./openclaw-source
       dockerfile: Dockerfile
       args:
-        OPENCLAW_DOCKER_APT_PACKAGES: ""
+        OPENCLAW_DOCKER_APT_PACKAGES: "docker.io"
     image: openclaw/openclaw:${OPENCLAW_VERSION:-latest}
     container_name: openclaw-gateway
     restart: unless-stopped
@@ -116,18 +116,15 @@ services:
       ZAI_API_KEY: ${ZHIPU_API_KEY:-}
     volumes:
       - openclaw-data:/home/node/.openclaw
+      - ./openclaw-gateway-config.json:/opt/seed/openclaw-gateway-config.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "127.0.0.1:18789:18789"
     command:
       [
-        "node",
-        "openclaw.mjs",
-        "gateway",
-        "--allow-unconfigured",
-        "--bind",
-        "lan",
-        "--port",
-        "18789",
+        "sh",
+        "-c",
+        "mkdir -p /home/node/.openclaw && ( [ ! -f /home/node/.openclaw/openclaw.json ] && cp /opt/seed/openclaw-gateway-config.json /home/node/.openclaw/openclaw.json ) || ( node -e 'const f=require(\"fs\"),p=\"/home/node/.openclaw/openclaw.json\";let c={};try{c=JSON.parse(f.readFileSync(p,\"utf8\"));}catch(e){};(c.gateway=c.gateway||{}).controlUi=c.gateway.controlUi||{};c.gateway.controlUi.allowInsecureAuth=true;f.writeFileSync(p,JSON.stringify(c,null,2));' ) ; exec node openclaw.mjs gateway --allow-unconfigured --bind lan --port 18789",
       ]
     networks:
       - clawdeploy
@@ -144,8 +141,9 @@ volumes:
   postgres-data:
     driver: local
   openclaw-data:
-    driver: local
+    name: openclaw-data  # Fixed name so clawdeploy-custom can share via override
 
 networks:
   clawdeploy:
+    name: clawdeploy
     driver: bridge

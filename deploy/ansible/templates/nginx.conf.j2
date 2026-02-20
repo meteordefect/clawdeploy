@@ -6,7 +6,15 @@ upstream control_api {
     server localhost:3001;
 }
 
-# Redirect HTTP to HTTPS
+upstream custom_dashboard {
+    server localhost:3002;
+}
+
+upstream custom_api {
+    server localhost:3003;
+}
+
+{# HTTP server: when SSL certs don't exist, serve app on port 80; when they do, redirect to HTTPS #}
 server {
     listen 80;
     server_name {{ domain }};
@@ -17,13 +25,117 @@ server {
         root /var/www/certbot;
     }
 
+{% if ssl_certs_exist | default(false) %}
     # Redirect all other HTTP traffic to HTTPS
     location / {
         return 301 https://$server_name$request_uri;
     }
 }
+{% else %}
+    # No SSL certs yet - serve app over HTTP (e.g. first deploy or IP-only)
+    # Custom dashboard (clawdeploy-custom project)
+    location /dashboard/custom {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://custom_dashboard/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+    location /dashboard/custom/api/ {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://custom_api/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+    location / {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
 
-# HTTPS server
+        proxy_pass http://dashboard;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    location ~ ^/api/agents/(register|heartbeat) {
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    location ~ ^/api/commands/(pending|[^/]+/(accept|result)) {
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    location /api/ {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        proxy_pass http://control_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    location /gateway/ws {
+        proxy_pass http://127.0.0.1:18789/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_connect_timeout 60s;
+        proxy_buffering off;
+    }
+
+    location /gateway/health {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://localhost:18789/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    access_log /var/log/nginx/clawdeploy-access.log;
+    error_log /var/log/nginx/clawdeploy-error.log;
+}
+{% endif %}
+
+{% if ssl_certs_exist | default(false) %}
+# HTTPS server (only when SSL certs exist)
 server {
     listen 443 ssl http2;
     server_name {{ domain }};
@@ -46,6 +158,29 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
 
     client_max_body_size 10M;
+
+    # Custom dashboard (clawdeploy-custom project)
+    location /dashboard/custom {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://custom_dashboard/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+    location /dashboard/custom/api/ {
+        auth_basic "ClawDeploy Control Plane";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://custom_api/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
 
     # Dashboard - requires basic auth
     location / {
@@ -139,3 +274,4 @@ server {
     access_log /var/log/nginx/clawdeploy-access.log;
     error_log /var/log/nginx/clawdeploy-error.log;
 }
+{% endif %}
