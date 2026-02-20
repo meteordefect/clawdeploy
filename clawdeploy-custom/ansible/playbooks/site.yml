@@ -64,10 +64,47 @@
       environment:
         DOCKER_BUILDKIT: "1"
 
-    - name: Start services
-      shell: cd {{ project_dir }} && docker compose up -d --force-recreate
-      environment:
-        COMPOSE_HTTP_TIMEOUT: "200"
+    - name: Ensure clawdeploy network exists (for gateway->api connectivity when main stack not deployed)
+      command: docker network create clawdeploy
+      register: net_create
+      failed_when: false
+      changed_when: net_create.rc == 0
+
+    - name: Reset postgres (wipes DB)
+      shell: cd {{ project_dir }} && docker compose down && docker volume rm clawdeploy-custom_postgres-data 2>/dev/null || true
+      when: reset_postgres | default(false) | bool
+
+    - block:
+      - name: Start services
+        shell: cd {{ project_dir }} && docker compose up -d --force-recreate
+        environment:
+          COMPOSE_HTTP_TIMEOUT: "200"
+
+      - name: Wait for custom API to be ready
+        wait_for:
+          port: 3003
+          host: 127.0.0.1
+          timeout: 60
+
+      rescue:
+        - name: Show API logs on failure
+          shell: docker logs clawdeploy-custom-api 2>&1 | tail -80
+          register: api_logs
+          ignore_errors: true
+
+        - name: Display API logs
+          debug:
+            var: api_logs.stdout
+
+        - name: Fail with context
+          fail:
+            msg: "Start services failed. See API logs above."
+
+    - name: Clear deploy banner (API tracks manual deploys)
+      uri:
+        url: "http://127.0.0.1:3003/api/deploy/complete"
+        method: POST
+        status_code: 200
 
     - name: Check main clawdeploy exists
       stat:

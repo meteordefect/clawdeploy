@@ -165,6 +165,10 @@ export const api = {
         return { deploying: false };
       }
     },
+    deploy: (soft = false) =>
+      fetch(`${API_URL}/deploy${soft ? '/soft' : ''}`, { method: 'POST' }).then((r) => r.json()),
+    rollback: () =>
+      fetch(`${API_URL}/deploy/rollback`, { method: 'POST' }).then((r) => r.json()),
     logs: async (): Promise<{ logs: string }> => {
       try {
         const res = await fetch(`${API_URL}/deploy/logs`);

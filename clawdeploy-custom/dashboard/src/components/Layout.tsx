@@ -46,7 +46,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-card border-r border-border sticky top-0 h-screen">
         <div className="p-8 border-b border-border">
-          <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">Test CustomClaw</h1>
+          <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">Pincher</h1>
           <p className="text-xs font-medium text-secondary mt-2 tracking-wide uppercase">Control Plane v3.0</p>
         </div>
         
@@ -110,7 +110,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 md:py-12 pb-24 md:pb-12">
+        <div className="w-full px-6 py-8 md:px-12 md:py-12 pb-24 md:pb-12">
           {children}
         </div>
       </main>

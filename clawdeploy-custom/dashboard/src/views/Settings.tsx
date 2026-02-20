@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { useDeploy } from '../contexts/DeployContext';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { api } from '../api/client';
 
 export function Settings() {
   const { setLocalDeploying } = useDeploy();
@@ -12,24 +11,31 @@ export function Settings() {
   const [rollbackLoading, setRollbackLoading] = useState(false);
   const [rollbackResult, setRollbackResult] = useState<string | null>(null);
 
-  const handleDeploy = async () => {
-    if (!confirm('Rebuild and redeploy this custom dashboard? This may take a few minutes.')) return;
+  const handleDeploy = async (soft = false) => {
+    const msg = soft
+      ? 'Quick deploy (uses cache, faster)?'
+      : 'Full rebuild and redeploy? This may take a few minutes.';
+    if (!confirm(msg)) return;
     setDeployLoading(true);
     setDeployResult(null);
     setLocalDeploying(true);
     try {
-      const res = await fetch(`${API_URL}/deploy`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        setDeployResult('Deploy complete. ' + (data.output?.slice?.(0, 200) || ''));
+      const data = await api.deploy.deploy(soft);
+      if (data.status === 'started') {
+        setDeployResult(null);
+        setLocalDeploying(true);
+      } else if (data.error) {
+        setDeployResult('Deploy failed: ' + data.error);
+        setLocalDeploying(false);
       } else {
-        setDeployResult('Deploy failed: ' + (data.error || res.statusText));
+        setDeployResult('Deploy failed: ' + (data.message || 'Unknown error'));
+        setLocalDeploying(false);
       }
     } catch (err) {
       setDeployResult('Request failed: ' + (err instanceof Error ? err.message : String(err)));
+      setLocalDeploying(false);
     } finally {
       setDeployLoading(false);
-      setLocalDeploying(false);
     }
   };
 
@@ -39,12 +45,11 @@ export function Settings() {
     setRollbackResult(null);
     setLocalDeploying(true);
     try {
-      const res = await fetch(`${API_URL}/deploy/rollback`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        setRollbackResult('Rollback complete. ' + (data.output?.slice?.(0, 200) || ''));
+      const data = await api.deploy.rollback();
+      if (data.error) {
+        setRollbackResult('Rollback failed: ' + (data.error || data.message || ''));
       } else {
-        setRollbackResult('Rollback failed: ' + (data.error || res.statusText));
+        setRollbackResult('Rollback complete. ' + (data.output?.slice?.(0, 200) || ''));
       }
     } catch (err) {
       setRollbackResult('Request failed: ' + (err instanceof Error ? err.message : String(err)));
@@ -87,18 +92,22 @@ export function Settings() {
         <Card title="Deploy">
           <div className="space-y-4 text-sm">
             <p className="text-secondary">
-              Rebuild and redeploy after editing code. Rollback if something breaks.
+              Full deploy: rebuild dashboard + API from scratch. Quick deploy: rebuild dashboard only (Vite build, refresh page to see changes).
+              Both show the deploy banner. Rollback if something breaks.
             </p>
             <div className="flex gap-3">
-              <Button variant="primary" onClick={handleDeploy} disabled={deployLoading}>
-                {deployLoading ? 'Deploying...' : 'Deploy'}
+              <Button variant="primary" onClick={() => handleDeploy(false)} disabled={deployLoading}>
+                {deployLoading ? 'Deploying...' : 'Full deploy'}
+              </Button>
+              <Button variant="secondary" onClick={() => handleDeploy(true)} disabled={deployLoading}>
+                Quick deploy
               </Button>
               <Button variant="secondary" onClick={handleRollback} disabled={rollbackLoading}>
                 {rollbackLoading ? 'Rolling back...' : 'Rollback'}
               </Button>
             </div>
             {deployResult && (
-              <p className={`text-xs ${deployResult.startsWith('Deploy complete') ? 'text-success' : 'text-danger'}`}>
+              <p className={`text-xs ${deployResult.startsWith('Deploy failed') || deployResult.startsWith('Request failed') ? 'text-danger' : 'text-success'}`}>
                 {deployResult}
               </p>
             )}

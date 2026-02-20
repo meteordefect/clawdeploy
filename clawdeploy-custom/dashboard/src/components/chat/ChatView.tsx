@@ -44,7 +44,7 @@ export function ChatView() {
 
   // Auto-scroll to bottom when new messages or streaming content arrives
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [messages, streamingContent]);
 
   const handleSend = async (message: string, _mentionedAgentIds?: string[]) => {
@@ -112,7 +112,7 @@ export function ChatView() {
   };
 
   return (
-    <div className="animate-in fade-in duration-300 h-full flex flex-col">
+    <div className="h-full flex flex-col">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
@@ -402,7 +402,7 @@ export function ChatView() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-4 w-full">
             <ChatInput
               onSend={handleSend}
               disabled={!isConnected || deploying}

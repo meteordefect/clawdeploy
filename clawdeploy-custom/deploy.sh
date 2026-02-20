@@ -21,9 +21,11 @@ load_env() {
 cmd_deploy() {
   check_env
   load_env
+  extra=""
+  [ "${1:-}" = "reset" ] && extra='-e reset_postgres=true'
   echo "Deploying to VPS..."
   cd ansible
-  ansible-playbook playbooks/site.yml
+  ansible-playbook playbooks/site.yml $extra
   cd ..
   domain=$(grep '^DOMAIN=' .env 2>/dev/null | cut -d= -f2- | sed 's/^[ "]*//;s/[ "]*$//')
   if [ -n "$domain" ]; then
@@ -82,6 +84,7 @@ Usage: ./deploy.sh [command]
 
 Commands:
   deploy    Sync code and deploy (Ansible, same as main clawdeploy)
+  deploy reset  Wipe Postgres and redeploy (fixes DB auth/schema issues)
   pull      Pull OpenClaw edits from VPS to local
   ssh       SSH to VPS
   logs      Tail docker compose logs
@@ -97,7 +100,7 @@ EOF
 }
 
 case "${1:-help}" in
-  deploy)   cmd_deploy ;;
+  deploy)   cmd_deploy "${@:2}" ;;
   pull)     cmd_pull ;;
   ssh)      cmd_ssh ;;
   logs)     cmd_logs ;;

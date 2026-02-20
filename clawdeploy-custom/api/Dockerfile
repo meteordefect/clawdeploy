@@ -18,7 +18,7 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine
 
-RUN apk add --no-cache docker-cli
+RUN apk add --no-cache docker-cli wget
 
 WORKDIR /app
 

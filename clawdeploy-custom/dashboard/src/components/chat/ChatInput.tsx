@@ -204,7 +204,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message... U
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <div className="flex gap-2 items-start">
         <div className="flex-1 relative">
           <textarea

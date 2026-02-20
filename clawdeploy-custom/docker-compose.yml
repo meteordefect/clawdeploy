@@ -8,15 +8,15 @@ services:
     container_name: clawdeploy-custom-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-clawdeploy_custom}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-clawdeploy_custom}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - custom
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clawdeploy_custom}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -31,15 +31,17 @@ services:
     ports:
       - "127.0.0.1:3003:3001"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-clawdeploy_custom}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-clawdeploy_custom}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       PORT: 3001
       OPENCLAW_DATA_PATH: /openclaw-data
       CLAWDEPLOY_PROJECT_PATH: ${CLAWDEPLOY_PROJECT_PATH:-/opt/clawdeploy-custom}
     volumes:
       - openclaw-data:/openclaw-data:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/clawdeploy-custom:/opt/clawdeploy-custom:rw  # for sync API - OpenClaw pushes workspace here
     networks:
       - custom
+      - clawdeploy
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,3 +81,6 @@ volumes:
 networks:
   custom:
     driver: bridge
+  clawdeploy:
+    external: true
+    name: clawdeploy

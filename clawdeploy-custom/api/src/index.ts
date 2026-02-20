@@ -5,7 +5,7 @@ import { runMigrations } from './db/migrate';
 import { startAgentStatusMonitor } from './lib/agentStatus';
 
 import healthRouter from './routes/health';
-import deployRouter from './routes/deploy';
+import deployRouter, { clearStuckDeploys } from './routes/deploy';
 import agentsRouter from './routes/agents';
 import commandsRouter from './routes/commands';
 import missionsRouter from './routes/missions';
@@ -45,6 +45,8 @@ async function startServer() {
     console.log('ClawDeploy Control API v3.0');
     console.log('Running database migrations...');
     await runMigrations();
+    
+    await clearStuckDeploys();
     
     console.log('Starting agent status monitor...');
     startAgentStatusMonitor(30000);

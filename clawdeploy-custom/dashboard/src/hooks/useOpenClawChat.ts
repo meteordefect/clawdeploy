@@ -109,6 +109,9 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
   }));
 
   function extractTextFromMessage(message: unknown): string {
+    // Handle direct string messages (OpenClaw may send text directly, not wrapped in content)
+    if (typeof message === 'string') return message;
+
     const m = message as { content?: Array<{ type: string; text?: string }> | string };
     if (typeof m?.content === 'string') return m.content;
     if (Array.isArray(m?.content)) {
@@ -240,81 +243,102 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     }
   }, []);
 
-  // Connect to OpenClaw gateway
+  // Connect to OpenClaw gateway with auto-reconnect on unexpected close
   useEffect(() => {
-    setState(prev => ({ ...prev, isConnecting: true }));
+    let cancelled = false;
+    let reconnectAttempts = 0;
+    const maxReconnectDelay = 30000;
+    const initialReconnectDelay = 1000;
 
-    const ws = new WebSocket(gatewayUrl);
-    wsRef.current = ws;
-
-    let connectSent = false;
-
-    ws.onopen = () => {
-      console.log('[OpenClaw] WebSocket connected');
-
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      const delay = Math.min(
+        initialReconnectDelay * Math.pow(2, reconnectAttempts),
+        maxReconnectDelay,
+      );
+      reconnectAttempts++;
+      setState(prev => ({ ...prev, isConnecting: true, error: `Reconnecting in ${Math.round(delay / 1000)}s...` }));
       setTimeout(() => {
-        if (!connectSent && ws.readyState === WebSocket.OPEN) {
-          connectSent = true;
-          const connectId = `connect-${Date.now()}`;
-
-          pendingRpcsRef.current.set(connectId, {
-            resolve: (result) => {
-              if (result.ok) {
-                console.log('[OpenClaw] Connected successfully');
-                setState(prev => ({
-                  ...prev,
-                  isConnected: true,
-                  isConnecting: false,
-                  error: null,
-                }));
-              } else {
-                console.error('[OpenClaw] Connect failed:', result.error);
-                setState(prev => ({
-                  ...prev,
-                  error: `Connection failed: ${result.error}`,
-                  isConnecting: false,
-                }));
-              }
-            },
-            reject: (err) => {
-              console.error('[OpenClaw] Connect error:', err);
-              setState(prev => ({
-                ...prev,
-                error: err.message,
-                isConnecting: false,
-              }));
-            },
-          });
-
-          ws.send(JSON.stringify({
-            type: 'req',
-            id: connectId,
-            method: 'connect',
-            params: {
-              minProtocol: 3,
-              maxProtocol: 3,
-              role: 'operator',
-              scopes: ['operator.read', 'operator.write'],
-              client: {
-                id: clientIdRef.current,
-                displayName: 'ClawDeploy Dashboard',
-                version: '1.0.0',
-                platform: 'web',
-                mode: 'webchat',
-                instanceId: sessionKeyRef.current,
-              },
-              caps: [],
-              auth: {
-                token: gatewayToken,
-                password: gatewayToken,
-              },
-            },
-          }));
-        }
-      }, 100);
+        if (cancelled) return;
+        connect();
+      }, delay);
     };
 
-    ws.onmessage = (event) => {
+    const connect = () => {
+      setState(prev => ({ ...prev, isConnecting: true }));
+
+      const ws = new WebSocket(gatewayUrl);
+      wsRef.current = ws;
+
+      let connectSent = false;
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        console.log('[OpenClaw] WebSocket connected');
+
+        setTimeout(() => {
+          if (!connectSent && ws.readyState === WebSocket.OPEN) {
+            connectSent = true;
+            const connectId = `connect-${Date.now()}`;
+
+            pendingRpcsRef.current.set(connectId, {
+              resolve: (result) => {
+                if (result.ok) {
+                  console.log('[OpenClaw] Connected successfully');
+                  setState(prev => ({
+                    ...prev,
+                    isConnected: true,
+                    isConnecting: false,
+                    error: null,
+                  }));
+                } else {
+                  console.error('[OpenClaw] Connect failed:', result.error);
+                  setState(prev => ({
+                    ...prev,
+                    error: `Connection failed: ${result.error}`,
+                    isConnecting: false,
+                  }));
+                }
+              },
+              reject: (err) => {
+                console.error('[OpenClaw] Connect error:', err);
+                setState(prev => ({
+                  ...prev,
+                  error: err.message,
+                  isConnecting: false,
+                }));
+              },
+            });
+
+            ws.send(JSON.stringify({
+              type: 'req',
+              id: connectId,
+              method: 'connect',
+              params: {
+                minProtocol: 3,
+                maxProtocol: 3,
+                role: 'operator',
+                scopes: ['operator.read', 'operator.write'],
+                client: {
+                  id: clientIdRef.current,
+                  displayName: 'ClawDeploy Dashboard',
+                  version: '1.0.0',
+                  platform: 'web',
+                  mode: 'webchat',
+                  instanceId: sessionKeyRef.current,
+                },
+                caps: [],
+                auth: {
+                  token: gatewayToken,
+                  password: gatewayToken,
+                },
+              },
+            }));
+          }
+        }, 100);
+      };
+
+      ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
 
@@ -396,41 +420,52 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
       }
     };
 
-    ws.onerror = (event) => {
-      console.error('[OpenClaw] WebSocket error:', event);
+      ws.onerror = (event) => {
+        console.error('[OpenClaw] WebSocket error:', event);
 
-      const errorMessage = `Unable to connect to OpenClaw Gateway at ${gatewayUrl}. ` +
-        `Make sure the gateway is running on port 18789 and accessible.`;
+        const errorMessage = `Unable to connect to OpenClaw Gateway at ${gatewayUrl}. ` +
+          `Make sure the gateway is running on port 18789 and accessible.`;
 
-      setState(prev => ({
-        ...prev,
-        error: errorMessage,
-        isConnecting: false,
-      }));
+        setState(prev => ({
+          ...prev,
+          error: errorMessage,
+          isConnecting: false,
+        }));
+      };
+
+      ws.onclose = (event) => {
+        console.log('[OpenClaw] WebSocket closed:', event.code, event.reason);
+        wsRef.current = null;
+        setState(prev => ({
+          ...prev,
+          isConnected: false,
+          isConnecting: false,
+          ...(event.code !== 1000 && {
+            error: `Connection closed (${event.code}${event.reason ? `: ${event.reason}` : ''}). ` +
+              `The OpenClaw Gateway may not be running.`
+          }),
+        }));
+
+        pendingRpcsRef.current.forEach((pending) => {
+          pending.reject(new Error('Connection closed'));
+        });
+        pendingRpcsRef.current.clear();
+
+        // Reconnect on unexpected close (not intentional 1000, not during unmount)
+        if (!cancelled && event.code !== 1000) {
+          scheduleReconnect();
+        }
+      };
     };
 
-    ws.onclose = (event) => {
-      console.log('[OpenClaw] WebSocket closed:', event.code, event.reason);
-      setState(prev => ({
-        ...prev,
-        isConnected: false,
-        isConnecting: false,
-        ...(event.code !== 1000 && {
-          error: `Connection closed (${event.code}${event.reason ? `: ${event.reason}` : ''}). ` +
-            `The OpenClaw Gateway may not be running.`
-        }),
-      }));
-
-      pendingRpcsRef.current.forEach((pending) => {
-        pending.reject(new Error('Connection closed'));
-      });
-      pendingRpcsRef.current.clear();
-    };
+    connect();
 
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      cancelled = true;
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'Component unmount');
       }
+      wsRef.current = null;
     };
   }, [gatewayUrl, gatewayToken]);
 

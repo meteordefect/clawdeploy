@@ -20,11 +20,18 @@ redeploy.sh    ← run this after editing
 
 ## Deploy after changes
 
-```bash
-cd /workspace/clawdeploy-custom && ./redeploy.sh
-```
+- **Dashboard only** (you only changed `dashboard/`): soft deploy
+  ```bash
+  cd /workspace/clawdeploy-custom && ./redeploy.sh --soft
+  ```
+  User refreshes the page to see changes.
 
-Or on the VPS host: `cd /opt/clawdeploy-custom && ./redeploy.sh`
+- **API or other files**: full deploy
+  ```bash
+  cd /workspace/clawdeploy-custom && ./redeploy.sh
+  ```
+
+Or on the VPS host: `cd /opt/clawdeploy-custom && ./redeploy.sh` (add `--soft` for dashboard-only)
 
 ## Mount required
 

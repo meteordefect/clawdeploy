@@ -19,21 +19,40 @@ The custom dashboard source is at **`/workspace/clawdeploy-custom`** (when the p
 | `api/` | control API – edit `.ts` routes and logic |
 | `redeploy.sh` | Deploy script – run after editing |
 
-## After editing
+## Deploy after editing
 
-**Option A – API deploy (recommended, no round-trip)**  
-POST to the custom API to rebuild and restart:
+**Important:** Your workspace is inside the agent; the deploy API builds from the VPS. You must **sync your workspace first** so your edits reach the VPS, then deploy.
 
-```bash
-curl -X POST https://YOUR-DOMAIN/dashboard/custom/api/deploy
-```
+1. **Sync workspace** (push your edits to the VPS):
+   ```bash
+   cd /workspace/clawdeploy-custom && tar czf - . | curl -s -X POST -H "Content-Type: application/gzip" --data-binary @- http://clawdeploy-custom-api:3001/api/sync
+   ```
 
-**Option B – Shell on VPS**  
-If you have shell access to the VPS:
+2. **Deploy** (runs on VPS with Docker):
 
-```bash
-cd /workspace/clawdeploy-custom && ./redeploy.sh
-```
+   - **Dashboard only** (`.tsx`, `.ts`, `.css`, `dashboard/` or `nginx.conf`)? → **Always use soft deploy**:
+     ```bash
+     curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy/soft
+     ```
+
+   - **API or other files** (`api/`, `docker-compose`, etc.)? → Full deploy:
+     ```bash
+     curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy
+     ```
+
+**Use soft deploy whenever possible.** Full deploy restarts more services and can cause the API to appear stuck. If you only changed UI code, use soft deploy.
+
+Tell the user to refresh the dashboard page after deploy (~1–2 minutes).
+
+**Fallback (if API unreachable):** Run on VPS shell:
+  ```bash
+  cd /opt/clawdeploy-custom && ./redeploy.sh --soft   # dashboard only
+  cd /opt/clawdeploy-custom && ./redeploy.sh          # full (api + dashboard)
+  ```
+
+**Which deploy to use?**
+- Edited `dashboard/**`, `*.tsx`, `*.ts`, `*.css`, `nginx.conf` → **soft deploy**
+- Edited `api/**`, `docker-compose`, `Dockerfile` → full deploy
 
 Changes appear at `/dashboard/custom`.
 
