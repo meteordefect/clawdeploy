@@ -17,8 +17,10 @@ export interface ChatSession {
 
 interface ChatState {
   messages: Message[];
+  streamingContent: string | null;
   isConnected: boolean;
   isConnecting: boolean;
+  isWaitingForReply: boolean;
   error: string | null;
 }
 
@@ -96,12 +98,27 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
 
   const [activeSessionKey, setActiveSessionKey] = useState<string>(initialSessionKey);
   const [savedSessions, setSavedSessions] = useState<ChatSession[]>(loadSessionsIndex);
+  const streamingContentRef = useRef<string>('');
   const [state, setState] = useState<ChatState>(() => ({
     messages: loadMessagesFromStorage(initialSessionKey),
+    streamingContent: null,
     isConnected: false,
     isConnecting: false,
+    isWaitingForReply: false,
     error: null,
   }));
+
+  function extractTextFromMessage(message: unknown): string {
+    const m = message as { content?: Array<{ type: string; text?: string }> | string };
+    if (typeof m?.content === 'string') return m.content;
+    if (Array.isArray(m?.content)) {
+      return m.content
+        .filter((c: { type: string; text?: string }) => c.type === 'text' && c.text)
+        .map((c: { text?: string }) => c.text || '')
+        .join('');
+    }
+    return '';
+  }
 
   const wsRef = useRef<WebSocket | null>(null);
   const sessionKeyRef = useRef<string>(initialSessionKey);
@@ -165,9 +182,11 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
         timestamp: Date.now(),
       };
 
+      streamingContentRef.current = '';
       setState(prev => ({
         ...prev,
         messages: [...prev.messages, userMessage],
+        isWaitingForReply: true,
       }));
 
       await sendRpc('chat.send', {
@@ -179,6 +198,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     } catch (err) {
       setState(prev => ({
         ...prev,
+        isWaitingForReply: false,
         error: err instanceof Error ? err.message : 'Failed to send message',
       }));
     }
@@ -309,22 +329,56 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
         if (msg.type === 'event' && msg.event === 'chat') {
           const payload = msg.payload;
 
-          if (payload.state === 'final' && payload.message) {
+          if (payload.state === 'delta' && payload.message) {
+            const text = extractTextFromMessage(payload.message);
+            if (text) {
+              streamingContentRef.current = text;
+              setState(prev => ({ ...prev, streamingContent: text }));
+            }
+          } else if (payload.state === 'final') {
+            const content = payload.message
+              ? extractTextFromMessage(payload.message)
+              : streamingContentRef.current;
             const assistantMessage: Message = {
-              id: `assistant-${Date.now()}-${payload.seq}`,
+              id: `assistant-${Date.now()}-${payload.seq ?? 0}`,
               role: 'assistant',
-              content: payload.message.content
-                .filter((c: any) => c.type === 'text' && c.text)
-                .map((c: any) => c.text)
-                .join(''),
-              timestamp: payload.message.timestamp || Date.now(),
+              content: content || 'Thinking…',
+              timestamp: payload.message?.timestamp || Date.now(),
               sessionKey: payload.sessionKey,
             };
-
+            streamingContentRef.current = '';
             setState(prev => ({
               ...prev,
               messages: [...prev.messages, assistantMessage],
+              streamingContent: null,
+              isWaitingForReply: false,
             }));
+          } else if (payload.state === 'aborted' || payload.state === 'error') {
+            const content = streamingContentRef.current;
+            if (content && payload.state === 'aborted') {
+              streamingContentRef.current = '';
+              const assistantMessage: Message = {
+                id: `assistant-${Date.now()}-aborted`,
+                role: 'assistant',
+                content,
+                timestamp: Date.now(),
+                sessionKey: payload.sessionKey,
+              };
+              setState(prev => ({
+                ...prev,
+                messages: [...prev.messages, assistantMessage],
+                streamingContent: null,
+                isWaitingForReply: false,
+              }));
+            } else {
+              streamingContentRef.current = '';
+              setState(prev => ({
+                ...prev,
+                streamingContent: null,
+                isWaitingForReply: false,
+                error: payload.state === 'error' ? (payload.errorMessage ?? 'Chat error') : prev.error,
+              }));
+            }
           }
         }
       } catch (err) {
