@@ -70,6 +70,12 @@
         dest: "{{ compose_file }}"
         mode: '0644'
 
+    - name: Copy OpenClaw gateway config (allowInsecureAuth for dashboard chat)
+      copy:
+        src: ../../openclaw-gateway-config.json
+        dest: "{{ project_dir }}/openclaw-gateway-config.json"
+        mode: '0644'
+
     - name: Copy .env file
       copy:
         src: ../../.env
@@ -113,6 +119,18 @@
           - "--exclude=dist"
           - "--exclude=.git"
 
+    - name: Check clawdeploy-custom exists (for skill override)
+      stat:
+        path: "{{ playbook_dir }}/../../../clawdeploy-custom/docker-compose.agent-mount.yml"
+      register: clawdeploy_custom_override
+
+    - name: Copy clawdeploy-custom skill override (adds clawdeploy-custom skill to OpenClaw gateway)
+      copy:
+        src: ../../../clawdeploy-custom/docker-compose.agent-mount.yml
+        dest: "{{ project_dir }}/docker-compose.override.yml"
+        mode: '0644'
+      when: clawdeploy_custom_override.stat.exists | default(false)
+
     - name: Install Nginx
       apt:
         name: nginx
@@ -126,11 +144,18 @@
       args:
         creates: /etc/nginx/.htpasswd
 
+    - name: Check if SSL certificate exists
+      stat:
+        path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      register: ssl_cert_stat
+
     - name: Copy Nginx configuration
       template:
         src: ../templates/nginx.conf.j2
         dest: /etc/nginx/sites-available/clawdeploy
         mode: '0644'
+      vars:
+        ssl_certs_exist: "{{ ssl_cert_stat.stat.exists | default(false) }}"
       notify: Reload Nginx
 
     - name: Enable Nginx site
@@ -190,6 +215,16 @@
       register: certbot_result
       failed_when: false
       changed_when: certbot_result.rc == 0
+
+    - name: Copy Nginx configuration (enable HTTPS after certbot)
+      template:
+        src: ../templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/clawdeploy
+        mode: '0644'
+      vars:
+        ssl_certs_exist: true
+      notify: Reload Nginx
+      when: certbot_result.rc == 0
 
     - name: Set up SSL certificate renewal
       cron:
