@@ -1,0 +1,38 @@
+# Example: Custom and third-party dashboards for ClawDeploy
+# Copy to docker-compose.override.yml or merge into your compose setup.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# Control-api is tied to the default dashboard only. Custom and third-party
+# dashboards each need their own API; they do not use control-api.
+#
+# Each stack needs:
+#   - UI (dashboard) + its own API
+#   - VITE_GATEWAY_WS_URL (shared OpenClaw gateway)
+#   - VITE_GATEWAY_TOKEN
+
+services:
+  # Example: OpenClaw-modified custom stack (dashboard + its own API)
+  # dashboard-custom:
+  #   build: ./custom/dashboard
+  #   environment:
+  #     VITE_API_URL: /dashboard/custom/api
+  #     VITE_GATEWAY_WS_URL: ${VITE_GATEWAY_WS_URL}
+  #     VITE_GATEWAY_TOKEN: ${VITE_GATEWAY_TOKEN}
+  #   ports: ["127.0.0.1:3002:3000"]
+  #
+  # api-custom:
+  #   build: ./custom/api
+  #   ports: ["127.0.0.1:3003:3001"]
+
+  # Example: Third-party stack (its own dashboard + its own API)
+  # dashboard-team9:
+  #   image: your-registry/team9-dashboard:latest
+  #   environment:
+  #     VITE_API_URL: /dashboard/team9/api
+  #     VITE_GATEWAY_WS_URL: ${VITE_GATEWAY_WS_URL}
+  #     VITE_GATEWAY_TOKEN: ${VITE_GATEWAY_TOKEN}
+  #   ports: ["127.0.0.1:3010:3000"]
+  #
+  # api-team9:
+  #   image: your-registry/team9-api:latest
+  #   ports: ["127.0.0.1:3011:3001"]
