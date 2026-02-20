@@ -50,21 +50,26 @@ function saveMessagesToStorage(sessionKey: string, messages: Message[]) {
   catch { /* storage full */ }
 }
 
-function generateSessionKey(): string {
-  return `dashboard-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
-}
+/** Fixed session key for webchat - all devices/tabs share this (maps to OpenClaw agent main) */
+const MAIN_SESSION_KEY = 'main';
 
 function getMainSessionKey(): string {
-  return 'webchat-main';
+  return MAIN_SESSION_KEY;
+}
+
+function isLegacyRandomKey(key: string): boolean {
+  return key.startsWith('dashboard-') && /dashboard-[a-z0-9]+-\d+/.test(key);
 }
 
 function getOrCreateCurrentSessionKey(): string {
   const stored = localStorage.getItem(CURRENT_SESSION_KEY);
-  if (stored) return stored;
-  // Use stable session key for main webchat session (shared across devices)
-  const key = getMainSessionKey();
-  localStorage.setItem(CURRENT_SESSION_KEY, key);
-  return key;
+  // Migrate from legacy random keys to shared main - prevents fragmented history
+  if (!stored || isLegacyRandomKey(stored)) {
+    const key = getMainSessionKey();
+    localStorage.setItem(CURRENT_SESSION_KEY, key);
+    return key;
+  }
+  return stored;
 }
 
 function updateSessionsIndex(sessionKey: string, messages: Message[]): ChatSession[] {
@@ -213,15 +218,27 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     }
   }, [sendRpc]);
 
-  // Start a new chat session
-  const startNewSession = useCallback(() => {
-    const newKey = generateSessionKey();
-    localStorage.setItem(CURRENT_SESSION_KEY, newKey);
-    sessionKeyRef.current = newKey;
-    setActiveSessionKey(newKey);
+  // Start a new chat session (resets main - shared across devices)
+  const startNewSession = useCallback(async () => {
+    const key = getMainSessionKey();
+    localStorage.setItem(CURRENT_SESSION_KEY, key);
+    sessionKeyRef.current = key;
+    setActiveSessionKey(key);
     streamingContentRef.current = '';
     setState(prev => ({ ...prev, messages: [], streamingContent: null }));
-  }, []);
+
+    // Send /new to OpenClaw to reset session context on backend
+    try {
+      await sendRpc('chat.send', {
+        sessionKey: key,
+        message: '/new',
+        idempotencyKey: `new-${Date.now()}`,
+        timeoutMs: 0,
+      });
+    } catch (err) {
+      console.error('[OpenClaw] Failed to reset session:', err);
+    }
+  }, [sendRpc]);
 
   // Load an existing session's messages
   const loadSession = useCallback((key: string) => {
@@ -240,11 +257,11 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
     saveSessionsIndex(sessions);
     setSavedSessions(sessions);
     if (key === sessionKeyRef.current) {
-      const newKey = generateSessionKey();
-      localStorage.setItem(CURRENT_SESSION_KEY, newKey);
-      sessionKeyRef.current = newKey;
-      setActiveSessionKey(newKey);
-      setState(prev => ({ ...prev, messages: [] }));
+      const mainKey = getMainSessionKey();
+      localStorage.setItem(CURRENT_SESSION_KEY, mainKey);
+      sessionKeyRef.current = mainKey;
+      setActiveSessionKey(mainKey);
+      setState(prev => ({ ...prev, messages: loadMessagesFromStorage(mainKey) }));
     }
   }, []);
 
