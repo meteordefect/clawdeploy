@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { User, Bot, Wifi, WifiOff, AtSign, Plus, History, Trash2, Clock, MessageSquare } from 'lucide-react';
+import { User, Bot, Wifi, WifiOff, AtSign, Plus, History, Trash2, Clock, MessageSquare, X } from 'lucide-react';
 import { Badge } from '../Badge';
 import { useOpenClawChat } from '../../hooks/useOpenClawChat';
 import type { ChatSession } from '../../hooks/useOpenClawChat';
@@ -28,6 +28,7 @@ export function ChatView() {
   const {
     messages, isConnected, isConnecting, error, sendMessage,
     activeSessionKey, savedSessions, startNewSession, loadSession, deleteSession,
+    streamingContent, isWaitingForReply,
   } = useOpenClawChat(GATEWAY_WS_URL, GATEWAY_TOKEN);
 
   // Handle URL session parameter (e.g. /chat?session=xxx)
@@ -108,20 +109,60 @@ export function ChatView() {
     deleteSession(key);
   };
 
+  const renderSessionList = (isMobile: boolean) => (
+    savedSessions.length === 0 ? (
+      <div className="text-center text-tertiary text-xs p-6">
+        <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
+        No saved conversations
+      </div>
+    ) : (
+      savedSessions.map((session) => (
+        <button
+          key={session.key}
+          onClick={() => handleSelectSession(session)}
+          className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group ${
+            session.key === activeSessionKey
+              ? 'bg-accent/15 border border-accent/30'
+              : 'hover:bg-subtle border border-transparent active:bg-subtle'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className={`text-sm truncate flex-1 ${
+              session.key === activeSessionKey ? 'text-accent-light font-medium' : 'text-primary'
+            }`}>
+              {session.preview || 'New conversation'}
+            </p>
+            <button
+              onClick={(e) => handleDeleteSession(e, session.key)}
+              className={`${isMobile ? '' : 'opacity-0 group-hover:opacity-100'} p-1 rounded hover:bg-danger/20 text-tertiary hover:text-danger transition-all flex-shrink-0`}
+            >
+              <Trash2 size={isMobile ? 14 : 12} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <Clock size={10} className="text-tertiary" />
+            <span className="text-xs text-tertiary">{formatSessionTime(session.timestamp)}</span>
+            <span className="text-xs text-tertiary">• {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}</span>
+          </div>
+        </button>
+      ))
+    )
+  );
+
   return (
     <div className="animate-in fade-in duration-300 h-full flex flex-col">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
-          <p className="text-secondary mt-1">Talk to your agents directly • Use @ to mention specific agents</p>
+          <p className="text-secondary mt-1 hidden sm:block">Talk to your agents directly • Use @ to mention specific agents</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleNewChat}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary bg-subtle hover:bg-subtle/80 border border-border rounded-lg transition-colors"
           >
             <Plus size={14} />
-            New Chat
+            <span className="hidden sm:inline">New Chat</span>
           </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
@@ -132,7 +173,7 @@ export function ChatView() {
             }`}
           >
             <History size={14} />
-            History
+            <span className="hidden sm:inline">History</span>
             {savedSessions.length > 0 && (
               <span className="ml-1 text-xs bg-accent/20 text-accent-light px-1.5 py-0.5 rounded-full">
                 {savedSessions.length}
@@ -144,17 +185,17 @@ export function ChatView() {
             {isConnecting ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
-                <span className="text-sm text-secondary">Connecting...</span>
+                <span className="text-sm text-secondary hidden sm:inline">Connecting...</span>
               </>
             ) : isConnected ? (
               <>
                 <Wifi size={16} className="text-success" />
-                <span className="text-sm text-secondary">Connected</span>
+                <span className="text-sm text-secondary hidden sm:inline">Connected</span>
               </>
             ) : (
               <>
                 <WifiOff size={16} className="text-danger" />
-                <span className="text-sm text-danger">Disconnected</span>
+                <span className="text-sm text-danger hidden sm:inline">Disconnected</span>
               </>
             )}
           </div>
@@ -162,9 +203,9 @@ export function ChatView() {
       </div>
 
       <div className="bg-card rounded-2xl shadow-card border border-border flex-1 flex flex-row min-h-0 max-h-[calc(100vh-250px)] overflow-hidden">
-        {/* Session History Sidebar */}
+        {/* Desktop Session History Sidebar */}
         {showHistory && (
-          <div className="w-72 border-r border-border flex flex-col bg-subtle/30 flex-shrink-0">
+          <div className="hidden md:flex w-72 border-r border-border flex-col bg-subtle/30 flex-shrink-0">
             <div className="p-3 border-b border-border">
               <h3 className="text-sm font-semibold text-primary">Chat History</h3>
               <p className="text-xs text-tertiary mt-0.5">
@@ -172,43 +213,7 @@ export function ChatView() {
               </p>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {savedSessions.length === 0 ? (
-                <div className="text-center text-tertiary text-xs p-6">
-                  <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
-                  No saved conversations
-                </div>
-              ) : (
-                savedSessions.map((session) => (
-                  <button
-                    key={session.key}
-                    onClick={() => handleSelectSession(session)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group ${
-                      session.key === activeSessionKey
-                        ? 'bg-accent/15 border border-accent/30'
-                        : 'hover:bg-subtle border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm truncate flex-1 ${
-                        session.key === activeSessionKey ? 'text-accent-light font-medium' : 'text-primary'
-                      }`}>
-                        {session.preview || 'New conversation'}
-                      </p>
-                      <button
-                        onClick={(e) => handleDeleteSession(e, session.key)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-danger/20 text-tertiary hover:text-danger transition-all flex-shrink-0"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Clock size={10} className="text-tertiary" />
-                      <span className="text-xs text-tertiary">{formatSessionTime(session.timestamp)}</span>
-                      <span className="text-xs text-tertiary">• {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}</span>
-                    </div>
-                  </button>
-                ))
-              )}
+              {renderSessionList(false)}
             </div>
           </div>
         )}
@@ -244,7 +249,7 @@ export function ChatView() {
               </div>
             )}
 
-            {messages.length === 0 && !error && (
+            {messages.length === 0 && !error && !streamingContent && (
               <div className="text-center text-secondary p-8">
                 <Bot size={48} className="mx-auto mb-4 opacity-20" />
                 <p className="text-sm">
@@ -332,6 +337,39 @@ export function ChatView() {
               );
             })}
 
+            {/* Streaming bubble */}
+            {(streamingContent || isWaitingForReply) && (
+              <div className="flex gap-3 flex-row">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-subtle border border-border">
+                  <Bot size={16} className="text-secondary" />
+                </div>
+                <div className="flex-1 max-w-[70%] text-left">
+                  <div className="mb-1">
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-2 py-0.5 bg-success/15 text-success border-success/30"
+                    >
+                      OpenClaw
+                    </Badge>
+                  </div>
+                  <div className="inline-block rounded-lg px-4 py-2 bg-subtle border border-border">
+                    {streamingContent ? (
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {streamingContent}
+                        <span className="inline-block w-1.5 h-4 ml-0.5 bg-accent/60 animate-pulse align-text-bottom rounded-sm" />
+                      </p>
+                    ) : (
+                      <div className="flex items-center gap-1.5 py-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce [animation-delay:0ms]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce [animation-delay:150ms]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce [animation-delay:300ms]" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -342,13 +380,38 @@ export function ChatView() {
               disabled={!isConnected}
               placeholder={isConnected ? "Type your message... Use @agent to mention" : "Waiting for connection..."}
             />
-            <p className="text-xs text-tertiary mt-2 flex items-center gap-2">
+            <p className="text-xs text-tertiary mt-2 hidden sm:flex items-center gap-2">
               <AtSign size={12} className="opacity-70" />
               Type <span className="font-mono bg-subtle px-1 rounded">@agentname</span> to mention specific agents
             </p>
           </div>
         </div>
       </div>
+
+      {/* Mobile history popup */}
+      {showHistory && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowHistory(false)}>
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[70vh] bg-card rounded-t-2xl border-t border-border flex flex-col animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-semibold text-primary">Chat History</h3>
+                <p className="text-xs text-tertiary mt-0.5">
+                  {savedSessions.length} conversation{savedSessions.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <button onClick={() => setShowHistory(false)} className="p-2 rounded-lg hover:bg-subtle transition-colors">
+                <X size={18} className="text-tertiary" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              {renderSessionList(true)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
