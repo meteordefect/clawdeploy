@@ -185,7 +185,6 @@ export function ChatView() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-serif font-bold text-primary">Chat</h1>
-            <p className="text-secondary mt-1">Talk to your agents directly &bull; Use @ to mention specific agents</p>
           </div>
           <div className="flex items-center gap-3">
             {fake && (
