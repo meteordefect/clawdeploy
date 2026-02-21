@@ -41,19 +41,8 @@ export function ChatInput({ onSend, disabled, placeholder = "mention for a speci
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStart, setMentionStart] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Load mentionables from OpenClaw (agents + subagents, no DB)
   useEffect(() => {
@@ -223,7 +212,7 @@ export function ChatInput({ onSend, disabled, placeholder = "mention for a speci
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={isMobile ? "type @agent to mention" : placeholder}
+            placeholder={placeholder}
             disabled={disabled}
             rows={1}
             className="w-full px-4 py-3 pr-12 bg-subtle border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-relaxed text-primary placeholder:text-tertiary shadow-sm overflow-hidden"
@@ -248,7 +237,7 @@ export function ChatInput({ onSend, disabled, placeholder = "mention for a speci
           className="flex-shrink-0 bg-accent text-white rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-sm"
           style={{ width: '44px', height: '44px' }}
         >
-          <Send size={isMobile ? 16 : 18} />
+          <Send size={18} />
         </button>
       </div>
 

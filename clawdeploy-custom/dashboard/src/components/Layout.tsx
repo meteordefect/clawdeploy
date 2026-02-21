@@ -22,7 +22,14 @@ const navItems: NavItem[] = [
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
-const base = ((import.meta.env.VITE_BASE_PATH as string) || '/').replace(/\/$/, '') || '/';
+const base = ((import.meta.env.VITE_BASE_PATH as string) || '').replace(/\/$/, '');
+
+function resolvePageTitle(pathname: string): string {
+  const match = navItems.find(
+    (item) => pathname === base + item.path || (base !== '/' && pathname.startsWith(base + item.path + '/')),
+  );
+  return match?.label ?? '';
+}
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
@@ -30,6 +37,9 @@ export function Layout({ children }: LayoutProps) {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
   });
+
+  const pageTitle = resolvePageTitle(location.pathname);
+  const isChatPage = location.pathname === base + '/chat' || (base !== '/' && location.pathname.startsWith(base + '/chat/'));
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -43,15 +53,15 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-surface text-primary flex font-sans">
+    <div className="h-[100dvh] bg-surface text-primary flex font-sans overflow-hidden">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-card border-r border-border sticky top-0 h-screen">
+      <aside className="hidden md:flex flex-col w-64 bg-card border-r border-border flex-shrink-0">
         <div className="p-8 border-b border-border">
           <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">Pincher</h1>
           <p className="text-xs font-medium text-secondary mt-2 tracking-wide uppercase">Control Plane v3.0</p>
         </div>
         
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === base + item.path || (base !== '/' && location.pathname.startsWith(base + item.path + '/'));
             const Icon = item.icon;
@@ -87,20 +97,25 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-surface">
+      {/* Main Content — fills remaining height, flex column for header + content + bottom nav space */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden sticky top-0 z-40 bg-card/90 backdrop-blur-lg border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
+        <div className="md:hidden flex-shrink-0 bg-card/90 backdrop-blur-lg border-b border-border z-40">
+          <div className="flex items-center justify-between px-4 py-3 gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
+              className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors flex-shrink-0"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
+            {isChatPage ? (
+              <div id="mobile-chat-slot" className="flex-1 flex items-center gap-2 min-w-0" />
+            ) : (
+              pageTitle && <h2 className="flex-1 text-sm font-semibold text-primary text-center">{pageTitle}</h2>
+            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg hover:bg-subtle transition-colors"
+              className="p-2 rounded-lg hover:bg-subtle transition-colors flex-shrink-0"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -108,10 +123,19 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        <div className="w-full px-6 py-8 md:px-12 md:py-12 pb-24 md:pb-12">
-          {children}
-        </div>
-      </main>
+        {/* Page content — chat gets the full flex area, other pages get padded scroll */}
+        {isChatPage ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {children}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto pb-[72px] md:pb-0">
+            <div className="w-full px-6 py-8 md:px-12 md:py-12">
+              {children}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
