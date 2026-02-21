@@ -38,7 +38,6 @@ services:
     volumes:
       - openclaw-data:/openclaw-data:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/clawdeploy-custom:/opt/clawdeploy-custom:rw  # for sync API - OpenClaw pushes workspace here
     networks:
       - custom
       - clawdeploy

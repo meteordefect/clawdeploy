@@ -11,7 +11,7 @@ This skill lets you modify the custom dashboard and redeploy it.
 
 ## Workspace
 
-The custom dashboard source is at **`/workspace/clawdeploy-custom`** (when the project is mounted into the agent).
+The custom dashboard source is at **`/workspace/clawdeploy-custom`** — this is a direct read-write mount of `/opt/clawdeploy-custom` on the VPS host. Edits you make here are immediately visible on the VPS filesystem. No sync step is needed.
 
 | Path | Contents |
 |------|----------|
@@ -21,28 +21,23 @@ The custom dashboard source is at **`/workspace/clawdeploy-custom`** (when the p
 
 ## Deploy after editing
 
-**Important:** Your workspace is inside the agent; the deploy API builds from the VPS. You must **sync your workspace first** so your edits reach the VPS, then deploy.
+**IMPORTANT: Do NOT run `npm install`, `npm run build`, or any build commands locally.** You cannot build the dashboard inside this container. Instead, trigger a deploy via the API — it builds inside Docker on the host.
 
-1. **Sync workspace** (push your edits to the VPS):
-   ```bash
-   cd /workspace/clawdeploy-custom && tar czf - . | curl -s -X POST -H "Content-Type: application/gzip" --data-binary @- http://clawdeploy-custom-api:3001/api/sync
-   ```
+After editing files, deploy by calling the API:
 
-2. **Deploy** (runs on VPS with Docker):
+- **Dashboard only** (`.tsx`, `.ts`, `.css`, `dashboard/` or `nginx.conf`) — **always use soft deploy**:
+  ```bash
+  curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy/soft
+  ```
 
-   - **Dashboard only** (`.tsx`, `.ts`, `.css`, `dashboard/` or `nginx.conf`)? → **Always use soft deploy**:
-     ```bash
-     curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy/soft
-     ```
+- **API or other files** (`api/`, `docker-compose`, etc.) — full deploy:
+  ```bash
+  curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy
+  ```
 
-   - **API or other files** (`api/`, `docker-compose`, etc.)? → Full deploy:
-     ```bash
-     curl -s -X POST http://clawdeploy-custom-api:3001/api/deploy
-     ```
+The API will return `{"status":"started","deployId":"..."}`. The build runs in the background (~1–2 min). Tell the user to refresh the dashboard page after deploy.
 
-**Use soft deploy whenever possible.** Full deploy restarts more services and can cause the API to appear stuck. If you only changed UI code, use soft deploy.
-
-Tell the user to refresh the dashboard page after deploy (~1–2 minutes).
+**Use soft deploy whenever possible.** Full deploy restarts more services.
 
 **Fallback (if API unreachable):** Run on VPS shell:
   ```bash
@@ -55,6 +50,10 @@ Tell the user to refresh the dashboard page after deploy (~1–2 minutes).
 - Edited `api/**`, `docker-compose`, `Dockerfile` → full deploy
 
 Changes appear at `/dashboard/custom`.
+
+## Important: Ansible deploys override your edits
+
+The project owner deploys from their local machine using Ansible, which rsyncs files with `--delete`. This overwrites any changes you've made. This is intentional — Ansible is the authoritative source.
 
 ## Rollback
 

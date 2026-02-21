@@ -1,12 +1,10 @@
 /**
- * Deploy, rollback, and sync endpoints. Requires Docker socket and CLAWDEPLOY_PROJECT_PATH.
- * Sync: OpenClaw pushes its workspace (gzipped tarball) so edits take effect on VPS before deploy.
+ * Deploy and rollback endpoints. Requires Docker socket and CLAWDEPLOY_PROJECT_PATH.
+ * OpenClaw edits files directly via volume mount — no sync step needed.
  * Access control: nginx auth_basic on /dashboard/custom/api/ protects these endpoints.
  */
-import express, { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
 import { query } from '../db/client';
 
 const router = Router();
@@ -266,48 +264,6 @@ router.post('/deploy/soft', async (req: Request, res: Response) => {
     deployId,
     message: 'Quick deploy started (cached build)',
   });
-});
-
-/**
- * Sync workspace from OpenClaw to VPS. POST a gzipped tarball (e.g. from
- * `cd /workspace/clawdeploy-custom && tar czf - .`) so edits take effect before deploy.
- */
-router.post('/sync', express.raw({ type: 'application/gzip', limit: '50mb' }), async (req: Request, res: Response) => {
-  const projectPath = process.env.CLAWDEPLOY_PROJECT_PATH || '/opt/clawdeploy-custom';
-  if (!fs.existsSync(projectPath)) {
-    res.status(503).json({ error: `Project path ${projectPath} not found (is it mounted?)` });
-    return;
-  }
-
-  const body = req.body;
-  if (!body || !Buffer.isBuffer(body) || body.length === 0) {
-    res.status(400).json({ error: 'Send a gzipped tarball as body (Content-Type: application/gzip)' });
-    return;
-  }
-
-  const tmpFile = path.join('/tmp', `sync-${Date.now()}.tar.gz`);
-  try {
-    fs.writeFileSync(tmpFile, body);
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawn('tar', ['xzf', tmpFile, '-C', projectPath], { stdio: ['ignore', 'pipe', 'pipe'] });
-      let stderr = '';
-      proc.stderr?.on('data', (d) => { stderr += d.toString(); });
-      proc.on('close', (code) => {
-        fs.unlinkSync(tmpFile);
-        if (code === 0) resolve();
-        else reject(new Error(`tar failed: ${stderr}`));
-      });
-      proc.on('error', reject);
-    });
-    res.json({ ok: true, message: 'Workspace synced' });
-  } catch (err) {
-    if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
-    console.error('Sync error:', err);
-    res.status(500).json({
-      error: 'Sync failed',
-      message: err instanceof Error ? err.message : 'Unknown error',
-    });
-  }
 });
 
 router.post('/deploy/rollback', async (req: Request, res: Response) => {

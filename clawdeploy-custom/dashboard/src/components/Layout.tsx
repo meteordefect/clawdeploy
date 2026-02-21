@@ -22,11 +22,9 @@ const navItems: NavItem[] = [
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
-const base = ((import.meta.env.VITE_BASE_PATH as string) || '').replace(/\/$/, '');
-
 function resolvePageTitle(pathname: string): string {
   const match = navItems.find(
-    (item) => pathname === base + item.path || (base !== '/' && pathname.startsWith(base + item.path + '/')),
+    (item) => pathname === item.path || pathname.startsWith(item.path + '/'),
   );
   return match?.label ?? '';
 }
@@ -39,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
   });
 
   const pageTitle = resolvePageTitle(location.pathname);
-  const isChatPage = location.pathname === base + '/chat' || (base !== '/' && location.pathname.startsWith(base + '/chat/'));
+  const isChatPage = location.pathname === '/chat' || location.pathname.startsWith('/chat/');
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -63,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
         
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === base + item.path || (base !== '/' && location.pathname.startsWith(base + item.path + '/'));
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
             const Icon = item.icon;
             return (
               <Link
@@ -160,7 +158,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <nav className="p-4 space-y-1">
               {navItems.map((item) => {
-                const isActive = location.pathname === base + item.path || (base !== '/' && location.pathname.startsWith(base + item.path + '/'));
+                const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                 const Icon = item.icon;
                 return (
                   <Link
@@ -191,7 +189,7 @@ export function Layout({ children }: LayoutProps) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-lg border-t border-border z-40 pb-safe">
         <div className="flex justify-around items-center p-2">
           {[navItems[0], navItems[1], navItems[2], navItems[3]].map((item) => {
-            const isActive = location.pathname === base + item.path || (base !== '/' && location.pathname.startsWith(base + item.path + '/'));
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
             const Icon = item.icon;
             return (
               <Link

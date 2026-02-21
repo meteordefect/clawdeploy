@@ -9,6 +9,8 @@ This project is the **custom dashboard** for ClawDeploy. You can modify it and r
 | On VPS (host)      | `/opt/clawdeploy-custom`    |
 | In OpenClaw (mount)| `/workspace/clawdeploy-custom` |
 
+These are the **same directory** — the OpenClaw gateway container mounts the host path as a read-write volume (`docker-compose.agent-mount.yml`). Edits in the mount are immediately reflected on the host. No sync step is needed.
+
 ## Layout
 
 ```
@@ -39,3 +41,7 @@ For OpenClaw chat to see this project, the main clawdeploy gateway override must
 
 - `/opt/clawdeploy-custom` → `/workspace/clawdeploy-custom` (read-write)
 - `skills.load.extraDirs` includes `/workspace/clawdeploy-custom/skills`
+
+## Ansible deploys override your edits
+
+The project owner deploys from their local machine using Ansible (`synchronize` with `delete: yes`). This overwrites all files on the VPS with the local version. This is intentional — Ansible is the authoritative deploy mechanism.
