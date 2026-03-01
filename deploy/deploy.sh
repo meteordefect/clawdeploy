@@ -201,7 +201,7 @@ cmd_tunnel() {
     log_success "Dashboard: http://localhost:8080"
     log_info "Press Ctrl+C to close tunnel"
     echo ""
-    ssh -N -L 8080:127.0.0.1:8080 root@$SERVER_IP
+    ssh -i ~/.ssh/friendlabs-deploy -N -L 8080:127.0.0.1:8080 root@$SERVER_IP
 }
 
 cmd_ssh() {
@@ -212,7 +212,7 @@ cmd_ssh() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Connecting to $SERVER_IP..."
-    ssh root@$SERVER_IP
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP
 }
 
 cmd_logs() {
@@ -223,7 +223,7 @@ cmd_logs() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Fetching logs from $SERVER_IP..."
-    ssh root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f --tail=100"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f --tail=100"
 }
 
 cmd_build_openclaw() {
@@ -308,7 +308,7 @@ cmd_agent_bridge_remote_logs() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Fetching agent bridge logs from $SERVER_IP..."
-    ssh root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f agent-bridge"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f agent-bridge"
 }
 
 cmd_agent_bridge_remote_status() {
@@ -319,7 +319,7 @@ cmd_agent_bridge_remote_status() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Checking agent bridge status on $SERVER_IP..."
-    ssh root@$SERVER_IP "cd /opt/clawdeploy && docker compose ps agent-bridge"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose ps agent-bridge"
 }
 
 cmd_list_agents() {
@@ -388,7 +388,7 @@ cmd_renew_ssl() {
     check_env
     load_env
     log_info "Renewing SSL certificates..."
-    ssh $(grep ansible_host ansible/inventory.ini | cut -d'=' -f2) "certbot renew --quiet && systemctl reload nginx"
+    ssh -i ~/.ssh/friendlabs-deploy root@$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2) "certbot renew --quiet && systemctl reload nginx"
     log_success "SSL certificates renewed"
 }
 

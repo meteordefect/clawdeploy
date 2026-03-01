@@ -118,14 +118,6 @@
         name: nginx
         state: present
 
-    - name: Generate htpasswd file
-      shell: >
-        htpasswd -cb /etc/nginx/.htpasswd 
-        "{{ lookup('env', 'BETA_USER') }}" 
-        "{{ lookup('env', 'BETA_PASSWORD') }}"
-      args:
-        creates: /etc/nginx/.htpasswd
-
     - name: Copy Nginx configuration
       template:
         src: ../templates/nginx.conf.j2

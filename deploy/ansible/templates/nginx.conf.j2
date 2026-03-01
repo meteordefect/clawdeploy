@@ -1,141 +1,137 @@
-upstream dashboard {
-    server localhost:3000;
+# ClawDeploy Nginx Configuration
+#
+# Dashboard access: SSH tunnel only (localhost:8080)
+#   ssh -N -L 8080:127.0.0.1:8080 root@{{ domain }}
+#   Then open: http://localhost:8080
+#
+# Agent API endpoints: publicly accessible on port 443 (bearer token secured)
+
+# --- SSH-TUNNEL-ONLY: Dashboard + full API ---
+# Bound to 127.0.0.1 — unreachable from the public internet.
+# Access exclusively via SSH tunnel.
+server {
+    listen 127.0.0.1:8080;
+    server_name localhost;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    client_max_body_size 10M;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    gzip_min_length 1000;
+
+    # All API endpoints (no rate limiting needed — localhost only)
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # OpenClaw Gateway WebSocket (dashboard chat)
+    location /gateway/ws {
+        proxy_pass http://127.0.0.1:18789/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_connect_timeout 60s;
+        proxy_buffering off;
+    }
+
+    # Gateway health check
+    location /gateway/health {
+        proxy_pass http://127.0.0.1:18789/health;
+        proxy_http_version 1.1;
+    }
+
+    # Dashboard SPA
+    location / {
+        proxy_pass http://127.0.0.1:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    access_log /var/log/nginx/clawdeploy-tunnel-access.log;
+    error_log /var/log/nginx/clawdeploy-tunnel-error.log;
 }
 
-upstream control_api {
-    server localhost:3001;
-}
-
-# Redirect HTTP to HTTPS
+# --- PUBLIC: Agent API endpoints only ---
+# Exposes only the agent register/heartbeat/command endpoints that remote agents need.
+# No dashboard. Bearer token auth is enforced by the control-api itself.
 server {
     listen 80;
     server_name {{ domain }};
 
-    # Allow Let's Encrypt challenge
+    # Let's Encrypt ACME challenge (for SSL cert renewal)
     location ^~ /.well-known/acme-challenge/ {
         default_type "text/plain";
         root /var/www/certbot;
     }
 
-    # Redirect all other HTTP traffic to HTTPS
     location / {
         return 301 https://$server_name$request_uri;
     }
 }
 
-# HTTPS server
 server {
     listen 443 ssl http2;
     server_name {{ domain }};
 
-    # SSL certificates (will be obtained from Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
-
-    # SSL configuration
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 
-    # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
 
-    client_max_body_size 10M;
+    limit_req_zone $binary_remote_addr zone=agent_api:10m rate=10r/s;
 
-    # Dashboard - requires basic auth
-    location / {
-        auth_basic "ClawDeploy Control Plane";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-
-        proxy_pass http://dashboard;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-    }
-
-    # Agent endpoints - no basic auth, uses bearer token
+    # Agent registration and heartbeat (bearer token secured by control-api)
     location ~ ^/api/agents/(register|heartbeat) {
-        proxy_pass http://control_api;
+        limit_req zone=agent_api burst=20 nodelay;
+        proxy_pass http://127.0.0.1:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
     }
 
+    # Agent command polling (bearer token secured by control-api)
     location ~ ^/api/commands/(pending|[^/]+/(accept|result)) {
-        proxy_pass http://control_api;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-    }
-
-    # All other API endpoints - require basic auth
-    location /api/ {
-        auth_basic "ClawDeploy Control Plane";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-
-        proxy_pass http://control_api;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-    }
-
-    # OpenClaw Gateway WebSocket - proxy for dashboard chat feature
-    # No basic auth required - authentication is handled by the OpenClaw gateway itself
-    location /gateway/ws {
-        proxy_pass http://127.0.0.1:18789/;
-        proxy_http_version 1.1;
-
-        # WebSocket upgrade headers
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        # Keep WebSocket connection alive
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-
-        # WebSocket timeouts (24 hours)
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
-        proxy_connect_timeout 60s;
-
-        # Disable buffering for WebSocket
-        proxy_buffering off;
-    }
-
-    # Gateway health check endpoint
-    location /gateway/health {
-        auth_basic "ClawDeploy Control Plane";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-
-        proxy_pass http://localhost:18789/health;
-        proxy_http_version 1.1;
+        limit_req zone=agent_api burst=20 nodelay;
+        proxy_pass http://127.0.0.1:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    access_log /var/log/nginx/clawdeploy-access.log;
-    error_log /var/log/nginx/clawdeploy-error.log;
+    # Everything else is blocked — use SSH tunnel for dashboard access
+    location / {
+        return 403;
+    }
+
+    access_log /var/log/nginx/clawdeploy-public-access.log;
+    error_log /var/log/nginx/clawdeploy-public-error.log;
 }
