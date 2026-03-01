@@ -72,6 +72,8 @@ server {
     error_log /var/log/nginx/clawdeploy-tunnel-error.log;
 }
 
+limit_req_zone $binary_remote_addr zone=agent_api:10m rate=10r/s;
+
 # --- PUBLIC: Agent API endpoints only ---
 # Exposes only the agent register/heartbeat/command endpoints that remote agents need.
 # No dashboard. Bearer token auth is enforced by the control-api itself.
@@ -104,8 +106,6 @@ server {
 
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
-
-    limit_req_zone $binary_remote_addr zone=agent_api:10m rate=10r/s;
 
     # Agent registration and heartbeat (bearer token secured by control-api)
     location ~ ^/api/agents/(register|heartbeat) {
