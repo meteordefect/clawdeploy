@@ -150,9 +150,7 @@ cmd_init() {
     cmd_ansible_deploy
     
     log_success "ClawDeploy Control Plane is ready!"
-    log_info "Access dashboard at: http://$SERVER_IP"
-    log_info "Username: $BETA_USER"
-    log_info "Password: $BETA_PASSWORD"
+    log_info "Open dashboard via SSH tunnel: ./deploy.sh tunnel"
 }
 
 cmd_full() {
@@ -190,6 +188,20 @@ cmd_nginx() {
     ansible-playbook playbooks/site.yml --tags nginx
     cd ..
     log_success "Nginx updated"
+}
+
+cmd_tunnel() {
+    if [ ! -f ansible/inventory.ini ]; then
+        log_error "Ansible inventory not found. Run 'deploy.sh init' first."
+        exit 1
+    fi
+
+    SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
+    log_info "Opening SSH tunnel → $SERVER_IP"
+    log_success "Dashboard: http://localhost:8080"
+    log_info "Press Ctrl+C to close tunnel"
+    echo ""
+    ssh -N -L 8080:127.0.0.1:8080 root@$SERVER_IP
 }
 
 cmd_ssh() {
@@ -445,11 +457,14 @@ ${BLUE}OpenClaw Gateway (Chat Feature):${NC}
   gateway-logs          View OpenClaw gateway logs
   gateway-status        Check OpenClaw gateway status
   
+${BLUE}Access Commands:${NC}
+  tunnel            Open SSH tunnel → http://localhost:8080 (SSH key required)
+  ssh               SSH to server
+  logs              View server logs
+
 ${BLUE}Maintenance Commands:${NC}
   status            Check all services health
   backup            Backup PostgreSQL + workspace files
-  ssh               SSH to server
-  logs              View server logs
   build-openclaw    Build OpenClaw image from source
 
 ${BLUE}SSL/HTTPS Commands:${NC}
@@ -496,6 +511,7 @@ case "${1:-help}" in
     migrate)                     cmd_ansible_migrate ;;
     status)                      cmd_ansible_status ;;
     backup)                      cmd_ansible_backup ;;
+    tunnel)                      cmd_tunnel ;;
     ssh)                         cmd_ssh ;;
     logs)                        cmd_logs ;;
     build-openclaw)              cmd_build_openclaw ;;
