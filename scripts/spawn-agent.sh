@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path>
+# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path> [task-type]
 # Called by task-runner.ts. Creates a git worktree, tmux session, and launches the sub-agent.
 set -euo pipefail
 
@@ -9,6 +9,7 @@ DESCRIPTION="$3"
 AGENT_TYPE="$4"
 MODEL="$5"
 REPO_PATH="$6"
+TASK_TYPE="${7:-feature}"
 
 SHORT_ID="${TASK_ID:0:8}"
 BRANCH="feat/task-${SHORT_ID}"
@@ -46,6 +47,39 @@ if [ -f "$CONTEXT_FILE" ]; then
   PROJECT_CONTEXT="$(cat "$CONTEXT_FILE")"
 fi
 
+# --- Task-type-specific instructions ---
+case "$TASK_TYPE" in
+  bugfix)
+    TASK_INSTRUCTIONS="- Identify the root cause before writing any fix.
+- Make the minimal change required to fix the bug.
+- Do NOT refactor surrounding code while fixing.
+- If a test exists for this area, run it to confirm the fix.
+- Commit message format: fix: <what was broken>"
+    ;;
+  refactor)
+    TASK_INSTRUCTIONS="- Do NOT change observable behavior — inputs and outputs must stay the same.
+- Run all existing tests before and after to confirm nothing breaks.
+- Focus on readability, naming, and structure — not features.
+- Commit message format: refactor: <what was improved>"
+    ;;
+  test)
+    TASK_INSTRUCTIONS="- Add or improve test coverage as described.
+- Do NOT modify production/source code — tests only.
+- Cover edge cases and failure modes, not just happy paths.
+- Commit message format: test: <what is now covered>"
+    ;;
+  docs)
+    TASK_INSTRUCTIONS="- Update documentation files only (README, docs/, inline JSDoc/docstrings).
+- Do NOT modify any application code.
+- Commit message format: docs: <what was documented>"
+    ;;
+  *)
+    TASK_INSTRUCTIONS="- Make all necessary code changes to complete the task.
+- Add tests if the change introduces new behavior.
+- Commit message format: feat: <what was added>"
+    ;;
+esac
+
 PROMPT="You are a coding agent working in the git repository at: $(pwd)
 
 Your task:
@@ -56,11 +90,18 @@ ${PROJECT_CONTEXT}
 
 Instructions:
 - Work in the current directory only.
-- Make all necessary code changes to complete the task.
+${TASK_INSTRUCTIONS}
 - Run tests if a test command is available (e.g. npm test, pytest).
 - Commit your changes with a clear commit message.
 - After committing, run: gh pr create --title \"${DESCRIPTION:0:72}\" --body \"Automated PR by ClawDeploy task ${TASK_ID}\" --base ${DEFAULT_BRANCH}
-- When done, exit."
+- When done, exit.
+
+Constraints — do NOT violate these:
+- Do NOT modify Dockerfile, docker-compose.yml, or any file under deploy/, nginx/, terraform/, or ansible/.
+- Do NOT add, remove, or upgrade dependencies unless the task explicitly requires it.
+- Do NOT rewrite or refactor files unrelated to the task description.
+- Do NOT change CI/CD configuration, environment variables, or secrets.
+- Do NOT modify git configuration or branch settings."
 
 # --- 3. Launch in tmux ---
 tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 2>/dev/null || true

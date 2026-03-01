@@ -27,6 +27,7 @@ export interface Task {
   description: string;
   status: TaskStatus;
   agent_type: 'claude' | 'codex' | 'kimi';
+  task_type: 'feature' | 'bugfix' | 'refactor' | 'test' | 'docs';
   model: string | null;
   branch: string | null;
   worktree_path: string | null;

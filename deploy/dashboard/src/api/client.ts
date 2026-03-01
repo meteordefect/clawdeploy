@@ -109,7 +109,7 @@ export const api = {
     list: (projectId: string, status?: string) =>
       request<Task[]>(`/projects/${projectId}/tasks${status ? `?status=${status}` : ''}`),
     get: (taskId: string) => request<Task>(`/tasks/${taskId}`),
-    create: (projectId: string, data: { title: string; description: string; agent_type?: string; model?: string }) =>
+    create: (projectId: string, data: { title: string; description: string; agent_type?: string; task_type?: string; model?: string }) =>
       request<Task>(`/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
     cancel: (taskId: string) =>
       request<{ ok: boolean }>(`/tasks/${taskId}/cancel`, { method: 'POST' }),

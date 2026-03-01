@@ -124,7 +124,7 @@ export function TasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', agent_type: 'claude', model: '' });
+  const [form, setForm] = useState({ title: '', description: '', agent_type: 'claude', task_type: 'feature', model: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const fetchTasks = useCallback(async () => {
@@ -150,11 +150,12 @@ export function TasksView() {
         title: form.title,
         description: form.description,
         agent_type: form.agent_type,
+        task_type: form.task_type,
         model: form.model || undefined,
       });
       setTasks((prev) => [task, ...prev]);
       setNewTaskOpen(false);
-      setForm({ title: '', description: '', agent_type: 'claude', model: '' });
+      setForm({ title: '', description: '', agent_type: 'claude', task_type: 'feature', model: '' });
     } catch (err) {
       console.error(err);
     } finally {
@@ -266,12 +267,12 @@ export function TasksView() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Agent</Label>
                 <Select
                   value={form.agent_type}
-                  onValueChange={(v) => setForm((f) => ({ ...f, agent_type: v }))}
+                  onValueChange={(v) => setForm((f) => ({ ...f, agent_type: v, model: '' }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -280,6 +281,24 @@ export function TasksView() {
                     <SelectItem value="claude">Claude Code</SelectItem>
                     <SelectItem value="kimi">Kimi K2.5</SelectItem>
                     <SelectItem value="codex">Codex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Task Type</Label>
+                <Select
+                  value={form.task_type}
+                  onValueChange={(v) => setForm((f) => ({ ...f, task_type: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="feature">Feature</SelectItem>
+                    <SelectItem value="bugfix">Bug Fix</SelectItem>
+                    <SelectItem value="refactor">Refactor</SelectItem>
+                    <SelectItem value="test">Test</SelectItem>
+                    <SelectItem value="docs">Docs</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

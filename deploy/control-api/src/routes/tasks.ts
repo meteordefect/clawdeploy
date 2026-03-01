@@ -59,7 +59,7 @@ router.get('/projects/:projectId/tasks', async (req: Request, res: Response) => 
 
 router.post('/projects/:projectId/tasks', async (req: Request, res: Response) => {
   const { projectId } = req.params;
-  const { title, description, agent_type = 'claude', model } = req.body;
+  const { title, description, agent_type = 'claude', task_type = 'feature', model } = req.body;
 
   if (!title || !description) {
     res.status(400).json({ error: 'title and description are required' });
@@ -80,10 +80,10 @@ router.post('/projects/:projectId/tasks', async (req: Request, res: Response) =>
     const project = projects[0];
 
     const result = await query<Task>(
-      `INSERT INTO tasks (project_id, title, description, agent_type, model)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO tasks (project_id, title, description, agent_type, task_type, model)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [projectId, title, description, agent_type, model || null]
+      [projectId, title, description, agent_type, task_type, model || null]
     );
 
     const task = result[0];
@@ -99,6 +99,7 @@ router.post('/projects/:projectId/tasks', async (req: Request, res: Response) =>
       title,
       description,
       agentType: agent_type,
+      taskType: task_type,
       model: model || null,
       repoPath: project.repo_path,
       defaultBranch: project.default_branch,
@@ -195,6 +196,7 @@ router.post('/tasks/:id/retry', async (req: Request, res: Response) => {
       title: task.title,
       description: task.description,
       agentType: task.agent_type,
+      taskType: (task as any).task_type || 'feature',
       model: task.model,
       repoPath: task.repo_path,
       defaultBranch: task.default_branch,
