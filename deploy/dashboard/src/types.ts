@@ -26,7 +26,7 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
-  agent_type: 'claude' | 'codex' | 'kimi';
+  agent_type: 'claude' | 'codex' | 'kimi' | 'glm';
   task_type: 'feature' | 'bugfix' | 'refactor' | 'test' | 'docs';
   model: string | null;
   branch: string | null;

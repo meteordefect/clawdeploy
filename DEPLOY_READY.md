@@ -8,7 +8,7 @@
 - Task runner service with cron for agent status checks
 
 ### ✅ Sub-Agent Scripts (Phase 2)
-- `scripts/spawn-agent.sh` — worktree + tmux + claude/codex/kimi
+- `scripts/spawn-agent.sh` — worktree + tmux + kimi/glm
 - `scripts/check-agents.sh` — PR detection + CI status + Telegram notify
 - `scripts/cleanup-agents.sh` — 7-day cleanup of merged/failed worktrees
 - `scripts/merge-pr.sh` — gh pr merge + status update + worktree cleanup
@@ -39,9 +39,8 @@ Required:
 - [ ] `DOMAIN` — your server IP or domain
 - [ ] `ZHIPU_API_KEY` — for OpenClaw GLM manager (chat)
 
-Optional but needed for sub-agents:
+Also required for sub-agents:
 - [ ] `MOONSHOT_API_KEY` — Kimi K2.5 tasks
-- [ ] `ANTHROPIC_API_KEY` — Claude Code tasks (or use claude CLI auth)
 
 ### Terraform (deploy/terraform/terraform.tfvars)
 
@@ -53,10 +52,15 @@ Optional but needed for sub-agents:
 
 These must be installed on the server (not in Docker) for sub-agents to work:
 
-- [ ] `claude` CLI — `npm install -g @anthropic-ai/claude-cli`
 - [ ] `gh` CLI — authenticated with `gh auth login`
 - [ ] `tmux`
-- [ ] `git` with SSH access to your repos
+- [ ] `git`
+
+### GitHub SSH Key
+
+Generate an SSH key from the dashboard: **Settings → Generate SSH Key**.
+
+Copy the public key and add it to [GitHub → Settings → SSH Keys](https://github.com/settings/keys). This connects ClawDeploy to your repos without exposing private credentials.
 
 ---
 

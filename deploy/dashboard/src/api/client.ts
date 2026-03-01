@@ -105,6 +105,11 @@ export const api = {
       request<void>(`/projects/${id}`, { method: 'DELETE' }),
   },
 
+  sshKey: {
+    get: () => request<{ exists: boolean; public_key: string | null }>('/ssh-key'),
+    generate: () => request<{ created: boolean; public_key: string; message?: string }>('/ssh-key/generate', { method: 'POST' }),
+  },
+
   tasks: {
     list: (projectId: string, status?: string) =>
       request<Task[]>(`/projects/${projectId}/tasks${status ? `?status=${status}` : ''}`),

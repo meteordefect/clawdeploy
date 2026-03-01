@@ -7,8 +7,8 @@ Get the orchestrator running and spawn your first coding sub-agent in under 15 m
 - Hetzner Cloud account + API token
 - SSH key pair
 - Local machine with: Terraform, Ansible, Docker
-- Server must have: `claude` CLI, `gh` CLI, `tmux`, `git`
-- API keys: `ZHIPU_API_KEY` (manager), `MOONSHOT_API_KEY` (Kimi), `ANTHROPIC_API_KEY` (Claude)
+- Server must have: `gh` CLI, `tmux`, `git`
+- API keys: `ZHIPU_API_KEY` (GLM 4.7 + chat), `MOONSHOT_API_KEY` (Kimi K2.5)
 
 ## 1. Clone & Configure
 
@@ -66,7 +66,13 @@ Username: value of BETA_USER in .env
 Password: value of BETA_PASSWORD in .env
 ```
 
-## 6. Create Your First Project
+## 6. Connect GitHub
+
+Go to **Settings** in the dashboard and click **Generate SSH Key**.
+
+Copy the public key that appears, then add it to [GitHub → Settings → SSH Keys](https://github.com/settings/keys). This lets ClawDeploy clone and push to your repos. The private key stays on the server.
+
+## 7. Create Your First Project
 
 In the dashboard, click **+ Add** in the project tab bar.
 
@@ -76,14 +82,13 @@ Fill in:
 - **Repo Path** — absolute path on the server where the repo is cloned, e.g. `/home/marten/repos/clawdeploy`
 - **Default Branch** — `main`
 
-## 7. Create a Task (Spawn a Sub-Agent)
+## 8. Create a Task (Spawn a Sub-Agent)
 
 Inside the project, go to **Tasks** → **New Task**.
 
 - **Title** — short name
 - **Description** — the full coding prompt the sub-agent will receive
-- **Agent Type** — `claude` / `kimi` / `codex`
-- **Model** — e.g. `claude-sonnet-4-5` or `kimi-k2.5`
+- **Model** — `Kimi K2.5` or `GLM 4.7`
 
 Click **Create Task**. The control API calls `spawn-agent.sh`, which:
 1. Creates a git worktree on the server
@@ -91,7 +96,7 @@ Click **Create Task**. The control API calls `spawn-agent.sh`, which:
 3. The agent codes, commits, pushes, and opens a PR
 4. Exits when done
 
-## 8. Approve & Merge
+## 9. Approve & Merge
 
 When the task reaches **review** status (PR open, CI passing), go to **Merge Queue** and click **Approve & Merge**.
 

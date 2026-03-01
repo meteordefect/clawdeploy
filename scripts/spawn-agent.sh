@@ -122,6 +122,11 @@ case "$AGENT_TYPE" in
     tmux send-keys -t "$TMUX_SESSION" \
       "OPENCLAW_MODEL=${MODEL:-kimi-k2.5} openclaw-run $(printf '%q' "$PROMPT") && tmux kill-session -t ${TMUX_SESSION}" Enter
     ;;
+  glm)
+    # GLM 4.7 (ZhipuAI) via OpenClaw thin wrapper
+    tmux send-keys -t "$TMUX_SESSION" \
+      "OPENCLAW_MODEL=${MODEL:-glm-4-flash} openclaw-run $(printf '%q' "$PROMPT") && tmux kill-session -t ${TMUX_SESSION}" Enter
+    ;;
   *)
     echo "Unknown agent type: $AGENT_TYPE" >&2
     update_status "failed"

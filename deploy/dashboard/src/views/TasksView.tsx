@@ -124,7 +124,7 @@ export function TasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', agent_type: 'claude', task_type: 'feature', model: '' });
+  const [form, setForm] = useState({ title: '', description: '', agent_type: 'kimi', task_type: 'feature', model: 'kimi-k2.5' });
   const [submitting, setSubmitting] = useState(false);
 
   const fetchTasks = useCallback(async () => {
@@ -155,7 +155,7 @@ export function TasksView() {
       });
       setTasks((prev) => [task, ...prev]);
       setNewTaskOpen(false);
-      setForm({ title: '', description: '', agent_type: 'claude', task_type: 'feature', model: '' });
+      setForm({ title: '', description: '', agent_type: 'kimi', task_type: 'feature', model: 'kimi-k2.5' });
     } catch (err) {
       console.error(err);
     } finally {
@@ -267,20 +267,22 @@ export function TasksView() {
                 required
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Agent</Label>
+                <Label>Model</Label>
                 <Select
-                  value={form.agent_type}
-                  onValueChange={(v) => setForm((f) => ({ ...f, agent_type: v, model: '' }))}
+                  value={form.model}
+                  onValueChange={(v) => {
+                    const agentType = v === 'glm-4-flash' ? 'glm' : 'kimi';
+                    setForm((f) => ({ ...f, agent_type: agentType, model: v }));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="claude">Claude Code</SelectItem>
-                    <SelectItem value="kimi">Kimi K2.5</SelectItem>
-                    <SelectItem value="codex">Codex</SelectItem>
+                    <SelectItem value="kimi-k2.5">Kimi K2.5</SelectItem>
+                    <SelectItem value="glm-4-flash">GLM 4.7</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -299,40 +301,6 @@ export function TasksView() {
                     <SelectItem value="refactor">Refactor</SelectItem>
                     <SelectItem value="test">Test</SelectItem>
                     <SelectItem value="docs">Docs</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Model</Label>
-                <Select
-                  value={form.model || '_default'}
-                  onValueChange={(v) => setForm((f) => ({ ...f, model: v === '_default' ? '' : v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {form.agent_type === 'claude' && (
-                      <>
-                        <SelectItem value="_default">Default (sonnet-4-5)</SelectItem>
-                        <SelectItem value="claude-sonnet-4-5">claude-sonnet-4-5</SelectItem>
-                        <SelectItem value="claude-opus-4">claude-opus-4</SelectItem>
-                        <SelectItem value="claude-sonnet-4">claude-sonnet-4</SelectItem>
-                      </>
-                    )}
-                    {form.agent_type === 'kimi' && (
-                      <>
-                        <SelectItem value="_default">Default (kimi-k2.5)</SelectItem>
-                        <SelectItem value="kimi-k2.5">kimi-k2.5</SelectItem>
-                      </>
-                    )}
-                    {form.agent_type === 'codex' && (
-                      <>
-                        <SelectItem value="_default">Default (gpt-4o)</SelectItem>
-                        <SelectItem value="gpt-4o">gpt-4o</SelectItem>
-                        <SelectItem value="o3">o3</SelectItem>
-                      </>
-                    )}
                   </SelectContent>
                 </Select>
               </div>
