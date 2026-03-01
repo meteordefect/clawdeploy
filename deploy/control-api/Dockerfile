@@ -20,6 +20,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install system tools needed at runtime: ssh-keygen for key generation, git for repo cloning
+RUN apk add --no-cache openssh-client git
+
 # Copy package files and install production dependencies only
 COPY package*.json ./
 RUN npm ci --only=production
