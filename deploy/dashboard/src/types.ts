@@ -1,3 +1,45 @@
+export interface Project {
+  id: string;
+  name: string;
+  repo_url: string;
+  repo_path: string;
+  default_branch: string;
+  created_at: string;
+  updated_at: string;
+  total_tasks?: number;
+  active_tasks?: number;
+}
+
+export type TaskStatus =
+  | 'pending'
+  | 'spawned'
+  | 'coding'
+  | 'pr_open'
+  | 'ci_pending'
+  | 'review'
+  | 'merged'
+  | 'failed';
+
+export interface Task {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  agent_type: 'claude' | 'codex' | 'kimi';
+  model: string | null;
+  branch: string | null;
+  worktree_path: string | null;
+  tmux_session: string | null;
+  pr_number: number | null;
+  pr_url: string | null;
+  ci_status: 'pending' | 'passing' | 'failing' | null;
+  spawn_retries: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface Agent {
   id: string;
   name: string;

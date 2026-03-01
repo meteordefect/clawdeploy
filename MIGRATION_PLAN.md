@@ -325,124 +325,107 @@ The manager (GLM) decides which coding model to use based on task complexity, or
 
 ## Migration Phases
 
-### Phase 1 — Database + Projects (Day 1)
+### ✅ Phase 1 — Database + Projects (DONE)
 
 **Goal:** Add `projects` and `tasks` tables. Wire up CRUD routes.
 
 Files touched:
-- `deploy/control-api/src/db/migrations/002_projects_tasks.sql` — new migration
-- `deploy/control-api/src/routes/projects.ts` — new route file
-- `deploy/control-api/src/routes/tasks.ts` — new route file
-- `deploy/control-api/src/index.ts` — register new routes
-
-**No dashboard changes yet.** Test via curl.
+- `deploy/control-api/src/migrations/002_projects_tasks.sql` ✅ created
+- `deploy/control-api/src/routes/projects.ts` ✅ created (full CRUD)
+- `deploy/control-api/src/routes/tasks.ts` ✅ created (full CRUD + merge queue + activity)
+- `deploy/control-api/src/index.ts` ✅ registered new routes + agent check cron
 
 Estimated: 2-3 hours
 
 ---
 
-### Phase 2 — Spawn + Check Scripts (Day 1-2)
+### ✅ Phase 2 — Spawn + Check Scripts (DONE)
 
 **Goal:** Working agent spawn and monitoring loop.
 
-Files to create:
-- `scripts/spawn-agent.sh`
-- `scripts/check-agents.sh`
-- `scripts/cleanup-agents.sh`
-- `scripts/merge-pr.sh`
-
-Files touched:
-- `deploy/control-api/src/services/task-runner.ts` — new service
-- `deploy/control-api/src/routes/tasks.ts` — wire spawn on POST
-
-Test manually: create a task via API → agent spawns in tmux → codes → PR appears.
+Files created:
+- `scripts/spawn-agent.sh` ✅ (worktree + tmux + claude/codex/kimi)
+- `scripts/check-agents.sh` ✅ (PR detection + CI status + Telegram notify)
+- `scripts/cleanup-agents.sh` ✅ (7-day cleanup of merged/failed worktrees)
+- `scripts/merge-pr.sh` ✅ (gh pr merge + status update + worktree cleanup)
+- `deploy/control-api/src/services/task-runner.ts` ✅ (spawnAgent + startAgentCheckCron)
 
 Estimated: 3-4 hours
 
 ---
 
-### Phase 3a — shadcn/ui Setup (Day 2)
+### ✅ Phase 3a — shadcn/ui Setup (DONE)
 
 **Goal:** Initialize shadcn/ui in the dashboard. Replace hand-rolled components with shadcn equivalents.
 
-Steps:
-1. Add `@` path alias to `tsconfig.json` (`"paths": { "@/*": ["./src/*"] }`) and `vite.config.ts` (`resolve.alias`)
-2. `npx shadcn@latest init` in `deploy/dashboard/`
-3. Install needed components: `npx shadcn@latest add tabs card badge button dialog table select textarea dropdown-menu sheet separator scroll-area tooltip skeleton`
-4. Map existing CSS custom properties to shadcn tokens (or adopt shadcn's defaults and re-apply DESIGN.md palette)
-5. Delete old hand-rolled components: `Card.tsx`, `Button.tsx`, `Modal.tsx`, `Badge.tsx`, `StatusBadge.tsx`
-
 Files touched:
-- `deploy/dashboard/tsconfig.json` — add path alias
-- `deploy/dashboard/vite.config.ts` — add resolve alias
-- `deploy/dashboard/tailwind.config.js` — shadcn init will extend this
-- `deploy/dashboard/src/lib/utils.ts` — shadcn creates this (`cn()` helper)
-- `deploy/dashboard/src/components/ui/*` — shadcn generates these
-- `deploy/dashboard/src/components/*.tsx` — remove old hand-rolled components
-- `deploy/dashboard/src/index.css` — shadcn CSS variables layer
+- `deploy/dashboard/tsconfig.json` ✅ added `@` path alias + baseUrl
+- `deploy/dashboard/vite.config.ts` ✅ added resolve alias
+- `deploy/dashboard/components.json` ✅ shadcn config
+- `deploy/dashboard/src/lib/utils.ts` ✅ cn() helper
+- `deploy/dashboard/src/index.css` ✅ shadcn CSS variable bridge (dark + light)
+- `deploy/dashboard/src/components/ui/` ✅ button, card, badge, tabs, dialog, table, select, textarea, separator, scroll-area, tooltip, skeleton, dropdown-menu, label
+
+Note: Old hand-rolled components kept for now (deprecated — ChatView updated to use new Badge).
 
 Estimated: 1-2 hours
 
 ---
 
-### Phase 3b — Dashboard: Project Tabs + Tasks View (Day 2-3)
+### ✅ Phase 3b — Dashboard: Project Tabs + Tasks View (DONE)
 
-**Goal:** Replace flat sidebar with project-scoped navigation using shadcn Tabs. Tasks view replaces Missions.
+**Goal:** Replace flat sidebar with project-scoped navigation. Tasks view replaces Missions.
 
 Files touched:
-- `deploy/dashboard/src/App.tsx` — add project routing
-- `deploy/dashboard/src/components/Layout.tsx` — project tab bar (shadcn `Tabs`)
-- `deploy/dashboard/src/views/TasksView.tsx` — new, built with shadcn `Card` + `Badge` + `Dialog`
-- `deploy/dashboard/src/views/MergeQueueView.tsx` — new, built with shadcn `Table` + `Badge`
-- `deploy/dashboard/src/api/client.ts` — add project + task API calls
-- `deploy/dashboard/src/types.ts` — add Project, Task types
-
-Remove or hide:
-- `deploy/dashboard/src/views/AgentsView.tsx`
-- `deploy/dashboard/src/views/MissionsView.tsx`
+- `deploy/dashboard/src/App.tsx` ✅ project-scoped routing at /p/:projectId/*
+- `deploy/dashboard/src/components/Layout.tsx` ✅ project tab bar at top + per-project sidebar + New Project dialog
+- `deploy/dashboard/src/views/TasksView.tsx` ✅ Card + Badge + Dialog + DropdownMenu
+- `deploy/dashboard/src/views/MergeQueueView.tsx` ✅ Table + Badge + merge/feedback dialogs
+- `deploy/dashboard/src/views/ActivityView.tsx` ✅ ScrollArea + project-scoped events
+- `deploy/dashboard/src/api/client.ts` ✅ projects + tasks API
+- `deploy/dashboard/src/types.ts` ✅ Project + Task + TaskStatus types
 
 Estimated: 3-4 hours
 
 ---
 
-### Phase 4 — Chat → Manager Integration (Day 3)
+### ✅ Phase 4 — Chat → Manager Integration (DONE)
 
-**Goal:** Chat view talks to OpenClaw manager, scoped per project. Manager can accept task descriptions and spawn agents.
+**Goal:** Chat view talks to OpenClaw manager, scoped per project.
 
 Files touched:
-- `deploy/dashboard/src/views/ChatView.tsx` — add project context
-- `deploy/dashboard/src/hooks/useOpenClawChat.ts` — scope sessions per project
-- OpenClaw agent config (on the machine running OpenClaw):
-  - System prompt: add tool-use instructions for `spawn-agent.sh`
-  - Context vault: `context/<project-name>/` per project
+- `deploy/dashboard/src/components/chat/ChatView.tsx` ✅ reads projectId from route params, passes to hook; Badge updated to shadcn
+- `deploy/dashboard/src/hooks/useOpenClawChat.ts` ✅ session key scoped per project (`project-<projectId>`)
 
-The key integration: when you tell the manager "fix the login bug and update the README", it breaks that into 2 tasks and calls the task creation API for each.
+Remaining (OpenClaw config — done outside codebase):
+- System prompt: add tool-use instructions for spawn-agent.sh
+- Context vault: context/<project-name>/ per project
 
 Estimated: 2-3 hours
 
 ---
 
-### Phase 5 — Merge Queue + Approval Flow (Day 3-4)
+### ✅ Phase 5 — Merge Queue + Approval Flow (DONE)
 
 **Goal:** Dashboard shows PRs ready for review. One-click merge.
 
 Files touched:
-- `deploy/dashboard/src/views/MergeQueueView.tsx` — flesh out
-- `deploy/control-api/src/routes/tasks.ts` — add merge + request-changes endpoints
-- `scripts/merge-pr.sh` — implement
+- `deploy/dashboard/src/views/MergeQueueView.tsx` ✅ Table + CI badges + Approve & Merge + Request Changes
+- `deploy/control-api/src/routes/tasks.ts` ✅ GET /merge-queue, POST /merge, POST /request-changes
+- `scripts/merge-pr.sh` ✅ gh pr merge + status update + worktree cleanup
 
 Estimated: 2-3 hours
 
 ---
 
-### Phase 6 — Polish + Telegram Notifications (Day 4)
+### ✅ Phase 6 — Polish + Telegram Notifications (DONE)
 
-**Goal:** Notification when PR is ready. Activity feed per project. Status summary.
+**Goal:** Notification when PR is ready. Activity feed per project.
 
 Files touched:
-- `scripts/check-agents.sh` — add Telegram notification call
-- `deploy/dashboard/src/views/ActivityView.tsx` — project-scoped events
-- `deploy/control-api/src/routes/events.ts` — add project_id filter
+- `scripts/check-agents.sh` ✅ Telegram notify on PR open + CI passing
+- `deploy/dashboard/src/views/ActivityView.tsx` ✅ project-scoped ScrollArea event log
+- `deploy/control-api/src/routes/tasks.ts` ✅ GET /projects/:id/activity endpoint (project-scoped)
 
 Estimated: 2 hours
 

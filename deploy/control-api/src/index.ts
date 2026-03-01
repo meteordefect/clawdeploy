@@ -3,6 +3,7 @@ import cors from 'cors';
 import * as dotenv from 'dotenv';
 import { runMigrations } from './db/migrate';
 import { startAgentStatusMonitor } from './lib/agentStatus';
+import { startAgentCheckCron } from './services/task-runner';
 
 import healthRouter from './routes/health';
 import agentsRouter from './routes/agents';
@@ -11,6 +12,8 @@ import missionsRouter from './routes/missions';
 import eventsRouter from './routes/events';
 import filesRouter from './routes/files';
 import sessionsRouter from './routes/sessions';
+import projectsRouter from './routes/projects';
+import tasksRouter from './routes/tasks';
 
 dotenv.config();
 
@@ -32,6 +35,8 @@ app.use('/api', missionsRouter);
 app.use('/api', eventsRouter);
 app.use('/api', filesRouter);
 app.use('/api', sessionsRouter);
+app.use('/api', projectsRouter);
+app.use('/api', tasksRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled error:', err);
@@ -40,12 +45,15 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 async function startServer() {
   try {
-    console.log('ClawDeploy Control API v3.0');
+    console.log('ClawDeploy Control API v4.0');
     console.log('Running database migrations...');
     await runMigrations();
     
     console.log('Starting agent status monitor...');
     startAgentStatusMonitor(30000);
+
+    console.log('Starting agent check cron (every 5 min)...');
+    startAgentCheckCron(5 * 60 * 1000);
     
     app.listen(PORT, () => {
       console.log(`✓ Control API listening on port ${PORT}`);

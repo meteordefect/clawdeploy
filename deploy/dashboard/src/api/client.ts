@@ -1,4 +1,4 @@
-import type { Agent, Mission, Command, Event, HealthStatus, FileItem, Session } from '../types';
+import type { Agent, Mission, Command, Event, HealthStatus, FileItem, Session, Project, Task } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -92,5 +92,39 @@ export const api = {
   sessions: {
     list: () => request<Session[]>('/sessions'),
     get: (id: string) => request<Session>(`/sessions/${id}`),
+  },
+
+  projects: {
+    list: () => request<Project[]>('/projects'),
+    get: (id: string) => request<Project>(`/projects/${id}`),
+    create: (data: { name: string; repo_url: string; repo_path: string; default_branch?: string }) =>
+      request<Project>('/projects', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Omit<Project, 'id' | 'created_at' | 'updated_at'>>) =>
+      request<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/projects/${id}`, { method: 'DELETE' }),
+  },
+
+  tasks: {
+    list: (projectId: string, status?: string) =>
+      request<Task[]>(`/projects/${projectId}/tasks${status ? `?status=${status}` : ''}`),
+    get: (taskId: string) => request<Task>(`/tasks/${taskId}`),
+    create: (projectId: string, data: { title: string; description: string; agent_type?: string; model?: string }) =>
+      request<Task>(`/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
+    cancel: (taskId: string) =>
+      request<{ ok: boolean }>(`/tasks/${taskId}/cancel`, { method: 'POST' }),
+    retry: (taskId: string) =>
+      request<{ ok: boolean }>(`/tasks/${taskId}/retry`, { method: 'POST' }),
+    mergeQueue: (projectId: string) =>
+      request<Task[]>(`/projects/${projectId}/merge-queue`),
+    merge: (taskId: string) =>
+      request<{ ok: boolean }>(`/tasks/${taskId}/merge`, { method: 'POST' }),
+    requestChanges: (taskId: string, feedback: string) =>
+      request<{ ok: boolean }>(`/tasks/${taskId}/request-changes`, {
+        method: 'POST',
+        body: JSON.stringify({ feedback }),
+      }),
+    activity: (projectId: string, limit?: number) =>
+      request<Event[]>(`/projects/${projectId}/activity${limit ? `?limit=${limit}` : ''}`),
   },
 };

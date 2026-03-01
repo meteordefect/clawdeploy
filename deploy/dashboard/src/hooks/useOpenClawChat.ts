@@ -79,18 +79,19 @@ function clearStreamingFromStorage() {
   catch { /* storage full */ }
 }
 
-/** Fixed session key for webchat - all devices/tabs share this (maps to OpenClaw agent main) */
-const MAIN_SESSION_KEY = 'main';
+/** Build the main session key — scoped per project if provided */
+const mainSessionKey = (projectId?: string) =>
+  projectId ? `project-${projectId}` : 'main';
 
 function isLegacyRandomKey(key: string): boolean {
   return /^dashboard-[a-z0-9]+-\d+$/.test(key) || /^webchat-/.test(key);
 }
 
-function getOrCreateCurrentSessionKey(): string {
+function getOrCreateCurrentSessionKey(defaultKey: string): string {
   const stored = localStorage.getItem(CURRENT_SESSION_KEY);
   if (stored && !isLegacyRandomKey(stored)) return stored;
-  localStorage.setItem(CURRENT_SESSION_KEY, MAIN_SESSION_KEY);
-  return MAIN_SESSION_KEY;
+  localStorage.setItem(CURRENT_SESSION_KEY, defaultKey);
+  return defaultKey;
 }
 
 function updateSessionsIndex(sessionKey: string, messages: Message[]): ChatSession[] {
@@ -192,8 +193,9 @@ async function syncSessionsFromGateway(
  * Hook to connect to OpenClaw Gateway via WebSocket
  * Uses OpenClaw's native protocol for chat with localStorage persistence
  */
-export function useOpenClawChat(gatewayUrl: string, gatewayToken: string) {
-  const initialSessionKey = getOrCreateCurrentSessionKey();
+export function useOpenClawChat(gatewayUrl: string, gatewayToken: string, projectId?: string) {
+  const MAIN_SESSION_KEY = mainSessionKey(projectId);
+  const initialSessionKey = getOrCreateCurrentSessionKey(MAIN_SESSION_KEY);
 
   const [activeSessionKey, setActiveSessionKey] = useState<string>(initialSessionKey);
   const [savedSessions, setSavedSessions] = useState<ChatSession[]>(loadSessionsIndex);

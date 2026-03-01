@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { User, Bot, Wifi, WifiOff, AtSign, Plus, History, Trash2, Clock, MessageSquare, X } from 'lucide-react';
-import { Badge } from '../Badge';
+import { Badge } from '../ui/badge';
 import { useOpenClawChat } from '../../hooks/useOpenClawChat';
 import type { ChatSession } from '../../hooks/useOpenClawChat';
 import { ChatInput } from './ChatInput';
@@ -24,12 +24,13 @@ export function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { projectId } = useParams<{ projectId?: string }>();
 
   const {
     messages, isConnected, isConnecting, error, sendMessage,
     activeSessionKey, savedSessions, startNewSession, loadSession, deleteSession,
     streamingContent, isWaitingForReply,
-  } = useOpenClawChat(GATEWAY_WS_URL, GATEWAY_TOKEN);
+  } = useOpenClawChat(GATEWAY_WS_URL, GATEWAY_TOKEN, projectId);
 
   // Handle URL session parameter (e.g. /chat?session=xxx)
   useEffect(() => {
@@ -293,7 +294,7 @@ export function ChatView() {
                       <div className="mb-1">
                         <Badge
                           variant="outline"
-                          className="text-xs px-2 py-0.5 bg-success/15 text-success border-success/30"
+                          className="text-xs px-2 py-0.5 bg-[rgb(var(--color-done)/0.15)] text-[rgb(var(--color-done))] border-[rgb(var(--color-done)/0.3)]"
                         >
                           OpenClaw
                         </Badge>
@@ -347,7 +348,7 @@ export function ChatView() {
                   <div className="mb-1">
                     <Badge
                       variant="outline"
-                      className="text-xs px-2 py-0.5 bg-success/15 text-success border-success/30"
+                      className="text-xs px-2 py-0.5 bg-[rgb(var(--color-done)/0.15)] text-[rgb(var(--color-done))] border-[rgb(var(--color-done)/0.3)]"
                     >
                       OpenClaw
                     </Badge>

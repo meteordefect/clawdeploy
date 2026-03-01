@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Bot, Target, FolderOpen, MessageSquare, ScrollText, Settings as SettingsIcon, Menu, X, Sun, Moon, LucideIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  GitPullRequest, MessageSquare, ListTodo, Activity,
+  FolderOpen, Settings as SettingsIcon, Menu, X,
+  Sun, Moon, Plus, ChevronDown,
+} from 'lucide-react';
+import { api } from '../api/client';
+import type { Project } from '../types';
+import { Button } from './ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from './ui/dialog';
+import { Label } from './ui/label';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,133 +20,182 @@ interface LayoutProps {
 interface NavItem {
   path: string;
   label: string;
-  icon: LucideIcon;
+  icon: React.ElementType;
 }
 
-const navItems: NavItem[] = [
-  { path: '/chat', label: 'Chat', icon: MessageSquare },
-  { path: '/agents', label: 'Agents', icon: Bot },
-  { path: '/missions', label: 'Missions', icon: Target },
-  { path: '/files', label: 'Files', icon: FolderOpen },
-  { path: '/sessions', label: 'Sessions', icon: ScrollText },
-  { path: '/events', label: 'Events', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: SettingsIcon },
-];
+function projectNav(projectId: string): NavItem[] {
+  return [
+    { path: `/p/${projectId}/tasks`,       label: 'Tasks',       icon: ListTodo },
+    { path: `/p/${projectId}/merge-queue`, label: 'Merge Queue', icon: GitPullRequest },
+    { path: `/p/${projectId}/chat`,        label: 'Chat',        icon: MessageSquare },
+    { path: `/p/${projectId}/activity`,    label: 'Activity',    icon: Activity },
+    { path: `/p/${projectId}/files`,       label: 'Files',       icon: FolderOpen },
+    { path: `/p/${projectId}/settings`,    label: 'Settings',    icon: SettingsIcon },
+  ];
+}
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams<{ projectId?: string }>();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [newProject, setNewProject] = useState({ name: '', repo_url: '', repo_path: '', default_branch: 'main' });
+  const [creating, setCreating] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
   });
+
+  useEffect(() => {
+    api.projects.list().then(setProjects).catch(console.error);
+  }, []);
+
+  const activeProjectId = params.projectId && params.projectId !== 'default'
+    ? params.projectId
+    : projects[0]?.id;
+
+  useEffect(() => {
+    if (
+      (location.pathname === '/p' || location.pathname === '/p/default/tasks') &&
+      projects.length > 0
+    ) {
+      navigate(`/p/${projects[0].id}/tasks`, { replace: true });
+    }
+  }, [projects, location.pathname, navigate]);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
     localStorage.setItem('theme', next);
-    if (next === 'light') {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
+    document.documentElement.classList.toggle('light', next === 'light');
+  };
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const p = await api.projects.create(newProject);
+      setProjects((prev) => [...prev, p]);
+      setNewProjectOpen(false);
+      setNewProject({ name: '', repo_url: '', repo_path: '', default_branch: 'main' });
+      navigate(`/p/${p.id}/tasks`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCreating(false);
     }
   };
 
+  const navItems = activeProjectId ? projectNav(activeProjectId) : [];
+
   return (
-    <div className="min-h-screen bg-surface text-primary flex font-sans">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-card border-r border-border sticky top-0 h-screen">
-        <div className="p-8 border-b border-border">
-          <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">ClawDeploy</h1>
-          <p className="text-xs font-medium text-secondary mt-2 tracking-wide uppercase">Control Plane v3.0</p>
-        </div>
-        
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-subtle text-primary shadow-sm ring-1 ring-border'
-                    : 'text-secondary hover:text-primary hover:bg-subtle/50'
-                }`}
-              >
-                <Icon 
-                  size={18} 
-                  className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-70'}`}
-                />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        
-        <div className="p-6 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-tertiary font-medium">© 2026 Friend Labs</p>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-surface text-primary flex flex-col font-sans">
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-surface">
-        {/* Mobile Header */}
-        <div className="md:hidden sticky top-0 z-40 bg-card/90 backdrop-blur-lg border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
-            <h1 className="text-xl font-serif font-bold text-primary">ClawDeploy</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg hover:bg-subtle transition-colors"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
+      {/* Top bar — project tabs */}
+      <header className="sticky top-0 z-50 bg-card border-b border-border flex items-center px-4 gap-2 h-12 shrink-0">
+        <span className="font-serif font-bold text-primary text-base mr-3 hidden sm:block">ClawDeploy</span>
+
+        {/* Project switcher tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto flex-1">
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => navigate(`/p/${p.id}/tasks`)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeProjectId === p.id
+                  ? 'bg-subtle text-primary shadow-sm ring-1 ring-border'
+                  : 'text-secondary hover:text-primary hover:bg-subtle/50'
+              }`}
+            >
+              {p.name}
+              {(p.active_tasks ?? 0) > 0 && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[rgb(var(--color-accent)/0.2)] text-[rgb(var(--color-accent))] text-[10px] font-semibold">
+                  {p.active_tasks}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Add project */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setNewProjectOpen(true)}
+          className="shrink-0 gap-1"
+        >
+          <Plus size={14} />
+          <span className="hidden sm:inline">Add</span>
+        </Button>
+
+        {/* Theme + mobile menu */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-subtle transition-colors"
+          title="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 rounded-lg hover:bg-subtle transition-colors"
+        >
+          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </header>
+
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar — per project */}
+        <aside className="hidden md:flex flex-col w-52 bg-card border-r border-border shrink-0">
+          <nav className="flex-1 px-3 py-4 space-y-0.5">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
+                    isActive
+                      ? 'bg-subtle text-primary shadow-sm ring-1 ring-border'
+                      : 'text-secondary hover:text-primary hover:bg-subtle/50'
+                  }`}
+                >
+                  <Icon
+                    size={16}
+                    className={`transition-transform duration-150 group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-60'}`}
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="px-4 py-3 border-t border-border">
+            <p className="text-xs text-tertiary">ClawDeploy v4.0</p>
           </div>
-        </div>
+        </aside>
 
-        <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 md:py-12 pb-24 md:pb-12">
-          {children}
-        </div>
-      </main>
+        {/* Main content */}
+        <main className="flex-1 overflow-auto bg-surface">
+          <div className="max-w-6xl mx-auto px-6 py-6 pb-24 md:pb-8">
+            {children}
+          </div>
+        </main>
+      </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile menu overlay */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="md:hidden fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
           onClick={() => setMobileMenuOpen(false)}
         >
-          <div 
-            className="absolute top-0 right-0 h-full w-64 bg-card shadow-2xl"
+          <div
+            className="absolute top-12 left-0 h-full w-56 bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-serif font-bold text-primary">Menu</h2>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-subtle transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <nav className="p-4 space-y-1">
+            <nav className="p-3 space-y-0.5">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
@@ -144,57 +204,82 @@ export function Layout({ children }: LayoutProps) {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-subtle text-primary'
-                        : 'text-secondary hover:text-primary hover:bg-subtle/50'
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      isActive ? 'bg-subtle text-primary' : 'text-secondary hover:text-primary hover:bg-subtle/50'
                     }`}
                   >
-                    <Icon size={18} />
+                    <Icon size={16} />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
             </nav>
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
-              <p className="text-xs text-tertiary">ClawDeploy v3.0</p>
-              <p className="text-xs text-tertiary mt-1">© 2026 Friend Labs</p>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Mobile Bottom Navigation - Quick Access */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-lg border-t border-border z-40 pb-safe">
-        <div className="flex justify-around items-center p-2">
-          {[navItems[0], navItems[1], navItems[2], navItems[3]].map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-xl transition-colors ${
-                  isActive ? 'text-primary' : 'text-tertiary hover:text-secondary'
-                }`}
-              >
-                <Icon 
-                  size={20} 
-                  className={`transition-transform ${isActive ? '-translate-y-0.5' : ''}`}
-                />
-                <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
-              </Link>
-            );
-          })}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-xl transition-colors text-tertiary hover:text-secondary"
-          >
-            <Menu size={20} />
-            <span className="text-[10px] font-medium tracking-wide">More</span>
-          </button>
-        </div>
-      </nav>
+      {/* New Project Dialog */}
+      <Dialog open={newProjectOpen} onOpenChange={setNewProjectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Project</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateProject} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-name">Name</Label>
+              <input
+                id="proj-name"
+                className="input-base"
+                placeholder="my-app"
+                value={newProject.name}
+                onChange={(e) => setNewProject((p) => ({ ...p, name: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-url">Repo URL</Label>
+              <input
+                id="proj-url"
+                className="input-base"
+                placeholder="git@github.com:user/my-app.git"
+                value={newProject.repo_url}
+                onChange={(e) => setNewProject((p) => ({ ...p, repo_url: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-path">Local Repo Path</Label>
+              <input
+                id="proj-path"
+                className="input-base"
+                placeholder="/home/user/repos/my-app"
+                value={newProject.repo_path}
+                onChange={(e) => setNewProject((p) => ({ ...p, repo_path: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-branch">Default Branch</Label>
+              <input
+                id="proj-branch"
+                className="input-base"
+                placeholder="main"
+                value={newProject.default_branch}
+                onChange={(e) => setNewProject((p) => ({ ...p, default_branch: e.target.value }))}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNewProjectOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? 'Creating…' : 'Create Project'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+// Suppress unused import warning for ChevronDown (used in future mobile dropdown)
+void ChevronDown;
