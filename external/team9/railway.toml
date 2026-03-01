@@ -1,3 +1,0 @@
-[build]
-# Enable git submodule cloning for enterprise builds
-submodules = true

@@ -1,4 +1,0 @@
-[submodule "enterprise"]
-	path = enterprise
-	url = git@github.com:weightwave/team9-enterprise.git
-	branch = main

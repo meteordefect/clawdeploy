@@ -1,1 +1,0 @@
-ALTER TABLE "im_bots" ADD COLUMN "extra" jsonb DEFAULT '{}'::jsonb;
