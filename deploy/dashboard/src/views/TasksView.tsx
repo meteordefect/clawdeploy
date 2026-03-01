@@ -303,14 +303,38 @@ export function TasksView() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-model">Model (optional)</Label>
-                <input
-                  id="task-model"
-                  className="input-base"
-                  placeholder="claude-sonnet-4-5"
-                  value={form.model}
-                  onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                />
+                <Label>Model</Label>
+                <Select
+                  value={form.model || '_default'}
+                  onValueChange={(v) => setForm((f) => ({ ...f, model: v === '_default' ? '' : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.agent_type === 'claude' && (
+                      <>
+                        <SelectItem value="_default">Default (sonnet-4-5)</SelectItem>
+                        <SelectItem value="claude-sonnet-4-5">claude-sonnet-4-5</SelectItem>
+                        <SelectItem value="claude-opus-4">claude-opus-4</SelectItem>
+                        <SelectItem value="claude-sonnet-4">claude-sonnet-4</SelectItem>
+                      </>
+                    )}
+                    {form.agent_type === 'kimi' && (
+                      <>
+                        <SelectItem value="_default">Default (kimi-k2.5)</SelectItem>
+                        <SelectItem value="kimi-k2.5">kimi-k2.5</SelectItem>
+                      </>
+                    )}
+                    {form.agent_type === 'codex' && (
+                      <>
+                        <SelectItem value="_default">Default (gpt-4o)</SelectItem>
+                        <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                        <SelectItem value="o3">o3</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>

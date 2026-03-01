@@ -5,7 +5,7 @@
   
   tasks:
     - name: Check if Control API container is running
-      shell: docker ps --filter "name=clawdeploy-control-api" --format "{{{{.Names}}}}"
+      shell: docker ps --filter "name=clawdeploy-control-api" --format "{% raw %}{{.Names}}{% endraw %}"
       register: container_check
 
     - name: Run migrations
