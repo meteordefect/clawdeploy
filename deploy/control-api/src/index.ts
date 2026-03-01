@@ -15,6 +15,7 @@ import sessionsRouter from './routes/sessions';
 import projectsRouter from './routes/projects';
 import tasksRouter from './routes/tasks';
 import sshKeysRouter from './routes/ssh-keys';
+import uploadsRouter from './routes/uploads';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api', sessionsRouter);
 app.use('/api', projectsRouter);
 app.use('/api', tasksRouter);
 app.use('/api', sshKeysRouter);
+app.use('/api', uploadsRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled error:', err);

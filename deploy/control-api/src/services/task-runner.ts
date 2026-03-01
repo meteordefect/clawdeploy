@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import * as path from 'path';
 import { query } from '../db/client';
+import { UPLOAD_BASE } from '../routes/uploads';
 
 const SCRIPTS_DIR = path.resolve(__dirname, '../../../../scripts');
 
@@ -14,10 +15,11 @@ interface SpawnOptions {
   model: string | null;
   repoPath: string;
   defaultBranch: string;
+  uploadId?: string | null;
 }
 
 export async function spawnAgent(opts: SpawnOptions): Promise<void> {
-  const { taskId, projectId, description, agentType, taskType, model, repoPath } = opts;
+  const { taskId, projectId, description, agentType, taskType, model, repoPath, uploadId } = opts;
   const shortId = taskId.slice(0, 8);
   const branch = `feat/task-${shortId}`;
   const worktreePath = path.join(repoPath, '..', 'worktrees', `${projectId.slice(0, 8)}-${shortId}`);
@@ -38,9 +40,11 @@ export async function spawnAgent(opts: SpawnOptions): Promise<void> {
 
   const scriptPath = path.join(SCRIPTS_DIR, 'spawn-agent.sh');
 
+  const attachDir = uploadId ? path.join(UPLOAD_BASE, uploadId) : '';
+
   execFile(
     scriptPath,
-    [projectId, taskId, description, agentType, model || '', repoPath, taskType || 'feature'],
+    [projectId, taskId, description, agentType, model || '', repoPath, taskType || 'feature', attachDir],
     { timeout: 30000 },
     (err) => {
       if (err) {

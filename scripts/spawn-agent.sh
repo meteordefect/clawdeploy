@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path> [task-type]
+# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path> [task-type] [attach-dir]
 # Called by task-runner.ts. Creates a git worktree, tmux session, and launches the sub-agent.
 set -euo pipefail
 
@@ -10,6 +10,7 @@ AGENT_TYPE="$4"
 MODEL="$5"
 REPO_PATH="$6"
 TASK_TYPE="${7:-feature}"
+ATTACH_DIR="${8:-}"
 
 SHORT_ID="${TASK_ID:0:8}"
 BRANCH="feat/task-${SHORT_ID}"
@@ -32,6 +33,17 @@ git worktree add "$WORKTREE_PATH" -b "$BRANCH" "origin/${DEFAULT_BRANCH}" --quie
   git worktree add "$WORKTREE_PATH" "$BRANCH" --quiet
 
 cd "$WORKTREE_PATH"
+
+# --- Copy attachments into worktree ---
+ATTACHMENT_LIST=""
+if [ -n "$ATTACH_DIR" ] && [ -d "$ATTACH_DIR" ]; then
+  ATTACH_DEST="${WORKTREE_PATH}/.task-attachments"
+  mkdir -p "$ATTACH_DEST"
+  cp "$ATTACH_DIR"/* "$ATTACH_DEST"/ 2>/dev/null || true
+  for f in "$ATTACH_DEST"/*; do
+    [ -f "$f" ] && ATTACHMENT_LIST="${ATTACHMENT_LIST}\n- .task-attachments/$(basename "$f")"
+  done
+fi
 
 # Install deps if package.json present and node_modules absent
 if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
@@ -80,11 +92,19 @@ case "$TASK_TYPE" in
     ;;
 esac
 
+ATTACH_SECTION=""
+if [ -n "$ATTACHMENT_LIST" ]; then
+  ATTACH_SECTION="
+Attached context files (read these before starting):
+$(echo -e "$ATTACHMENT_LIST")
+"
+fi
+
 PROMPT="You are a coding agent working in the git repository at: $(pwd)
 
 Your task:
 ${DESCRIPTION}
-
+${ATTACH_SECTION}
 Project context:
 ${PROJECT_CONTEXT}
 

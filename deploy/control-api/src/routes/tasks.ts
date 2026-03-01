@@ -59,7 +59,7 @@ router.get('/projects/:projectId/tasks', async (req: Request, res: Response) => 
 
 router.post('/projects/:projectId/tasks', async (req: Request, res: Response) => {
   const { projectId } = req.params;
-  const { title, description, agent_type = 'claude', task_type = 'feature', model } = req.body;
+  const { title, description, agent_type = 'claude', task_type = 'feature', model, upload_id } = req.body;
 
   if (!title || !description) {
     res.status(400).json({ error: 'title and description are required' });
@@ -103,6 +103,7 @@ router.post('/projects/:projectId/tasks', async (req: Request, res: Response) =>
       model: model || null,
       repoPath: project.repo_path,
       defaultBranch: project.default_branch,
+      uploadId: upload_id || null,
     }).catch((err: Error) => console.error('spawnAgent error:', err));
 
     res.status(201).json(task);

@@ -110,11 +110,21 @@ export const api = {
     generate: () => request<{ created: boolean; public_key: string; message?: string }>('/ssh-key/generate', { method: 'POST' }),
   },
 
+  uploads: {
+    create: async (files: File[]): Promise<{ upload_id: string; files: { name: string; size: number }[] }> => {
+      const formData = new FormData();
+      files.forEach((f) => formData.append('files', f));
+      const response = await fetch(`${API_URL}/uploads`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+      return response.json();
+    },
+  },
+
   tasks: {
     list: (projectId: string, status?: string) =>
       request<Task[]>(`/projects/${projectId}/tasks${status ? `?status=${status}` : ''}`),
     get: (taskId: string) => request<Task>(`/tasks/${taskId}`),
-    create: (projectId: string, data: { title: string; description: string; agent_type?: string; task_type?: string; model?: string }) =>
+    create: (projectId: string, data: { title: string; description: string; agent_type?: string; task_type?: string; model?: string; upload_id?: string }) =>
       request<Task>(`/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
     cancel: (taskId: string) =>
       request<{ ok: boolean }>(`/tasks/${taskId}/cancel`, { method: 'POST' }),

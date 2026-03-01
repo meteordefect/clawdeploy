@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   GitBranch, ExternalLink, MoreHorizontal, RefreshCw,
-  XCircle, Plus, Bot, Clock,
+  XCircle, Plus, Bot, Clock, Paperclip, X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import type { Task } from '../types';
@@ -126,6 +126,8 @@ export function TasksView() {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', agent_type: 'kimi', task_type: 'feature', model: 'kimi-k2.5' });
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchTasks = useCallback(async () => {
     if (!projectId) return;
@@ -146,16 +148,24 @@ export function TasksView() {
     if (!projectId) return;
     setSubmitting(true);
     try {
+      let upload_id: string | undefined;
+      if (files.length > 0) {
+        const upload = await api.uploads.create(files);
+        upload_id = upload.upload_id;
+      }
+
       const task = await api.tasks.create(projectId, {
         title: form.title,
         description: form.description,
         agent_type: form.agent_type,
         task_type: form.task_type,
         model: form.model || undefined,
+        upload_id,
       });
       setTasks((prev) => [task, ...prev]);
       setNewTaskOpen(false);
       setForm({ title: '', description: '', agent_type: 'kimi', task_type: 'feature', model: 'kimi-k2.5' });
+      setFiles([]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -266,6 +276,52 @@ export function TasksView() {
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 required
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Attachments</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".csv,.pdf,.txt,.json,.md,.xml,.yaml,.yml,.tsv,.log"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                  e.target.value = '';
+                }}
+              />
+              <div
+                className="border border-dashed border-[rgb(var(--input))] rounded-lg p-3 cursor-pointer hover:bg-[rgb(var(--muted))] transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {files.length === 0 ? (
+                  <p className="text-sm text-[rgb(var(--muted-foreground))] text-center flex items-center justify-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Attach CSV, PDF, or text files as context
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {files.map((f, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 text-xs bg-[rgb(var(--muted))] text-[rgb(var(--foreground))] px-2 py-1 rounded-md"
+                      >
+                        {f.name}
+                        <button
+                          type="button"
+                          className="hover:text-red-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFiles((prev) => prev.filter((_, idx) => idx !== i));
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
