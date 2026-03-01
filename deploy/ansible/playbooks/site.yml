@@ -64,6 +64,12 @@
         state: directory
         mode: '0755'
 
+    - name: Create repos base directory
+      file:
+        path: /opt/repos
+        state: directory
+        mode: '0755'
+
     - name: Copy docker-compose.yml
       copy:
         src: ../../docker-compose.yml

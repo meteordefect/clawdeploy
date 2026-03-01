@@ -42,7 +42,7 @@ export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', repo_url: '', repo_path: '', default_branch: 'main' });
+  const [newProject, setNewProject] = useState({ name: '', repo_url: '', default_branch: 'main' });
   const [creating, setCreating] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
@@ -79,7 +79,7 @@ export function Layout({ children }: LayoutProps) {
       const p = await api.projects.create(newProject);
       setProjects((prev) => [...prev, p]);
       setNewProjectOpen(false);
-      setNewProject({ name: '', repo_url: '', repo_path: '', default_branch: 'main' });
+      setNewProject({ name: '', repo_url: '', default_branch: 'main' });
       navigate(`/p/${p.id}/tasks`);
     } catch (err) {
       console.error(err);
@@ -244,17 +244,6 @@ export function Layout({ children }: LayoutProps) {
                 placeholder="git@github.com:user/my-app.git"
                 value={newProject.repo_url}
                 onChange={(e) => setNewProject((p) => ({ ...p, repo_url: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="proj-path">Local Repo Path</Label>
-              <input
-                id="proj-path"
-                className="input-base"
-                placeholder="/home/user/repos/my-app"
-                value={newProject.repo_path}
-                onChange={(e) => setNewProject((p) => ({ ...p, repo_path: e.target.value }))}
                 required
               />
             </div>

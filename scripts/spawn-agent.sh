@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path> [task-type] [attach-dir]
-# Called by task-runner.ts. Creates a git worktree, tmux session, and launches the sub-agent.
+# spawn-agent.sh <project-id> <task-id> <description> <agent-type> <model> <repo-path> <repo-url> [task-type] [attach-dir]
+# Called by task-runner.ts. Clones repo if missing, creates git worktree, tmux session, and launches the sub-agent.
 set -euo pipefail
 
 PROJECT_ID="$1"
@@ -9,8 +9,9 @@ DESCRIPTION="$3"
 AGENT_TYPE="$4"
 MODEL="$5"
 REPO_PATH="$6"
-TASK_TYPE="${7:-feature}"
-ATTACH_DIR="${8:-}"
+REPO_URL="$7"
+TASK_TYPE="${8:-feature}"
+ATTACH_DIR="${9:-}"
 
 SHORT_ID="${TASK_ID:0:8}"
 BRANCH="feat/task-${SHORT_ID}"
@@ -25,7 +26,13 @@ update_status() {
     -d "{\"status\": \"$1\"}" > /dev/null || true
 }
 
-# --- 1. Create git worktree ---
+# --- 1. Clone repo if it doesn't exist yet ---
+if [ ! -d "$REPO_PATH/.git" ]; then
+  mkdir -p "$(dirname "$REPO_PATH")"
+  git clone "$REPO_URL" "$REPO_PATH"
+fi
+
+# --- 2. Create git worktree ---
 cd "$REPO_PATH"
 DEFAULT_BRANCH="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
 git fetch origin "$DEFAULT_BRANCH" --quiet

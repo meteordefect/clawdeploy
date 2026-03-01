@@ -97,7 +97,7 @@ export const api = {
   projects: {
     list: () => request<Project[]>('/projects'),
     get: (id: string) => request<Project>(`/projects/${id}`),
-    create: (data: { name: string; repo_url: string; repo_path: string; default_branch?: string }) =>
+    create: (data: { name: string; repo_url: string; default_branch?: string }) =>
       request<Project>('/projects', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Omit<Project, 'id' | 'created_at' | 'updated_at'>>) =>
       request<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

@@ -3,6 +3,12 @@ import { query } from '../db/client';
 
 const router = Router();
 
+const REPOS_BASE_PATH = process.env.REPOS_BASE_PATH || '/opt/repos';
+
+function toSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'project';
+}
+
 interface Project {
   id: string;
   name: string;
@@ -32,12 +38,14 @@ router.get('/projects', async (_req: Request, res: Response) => {
 });
 
 router.post('/projects', async (req: Request, res: Response) => {
-  const { name, repo_url, repo_path, default_branch = 'main' } = req.body;
+  const { name, repo_url, default_branch = 'main' } = req.body;
 
-  if (!name || !repo_url || !repo_path) {
-    res.status(400).json({ error: 'name, repo_url, and repo_path are required' });
+  if (!name || !repo_url) {
+    res.status(400).json({ error: 'name and repo_url are required' });
     return;
   }
+
+  const repo_path = `${REPOS_BASE_PATH}/${toSlug(name)}`;
 
   try {
     const result = await query<Project>(

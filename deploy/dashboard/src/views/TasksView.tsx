@@ -130,7 +130,10 @@ export function TasksView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchTasks = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId || projectId === 'default') {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await api.tasks.list(projectId);
       setTasks(data);
@@ -145,7 +148,7 @@ export function TasksView() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectId) return;
+    if (!projectId || projectId === 'default') return;
     setSubmitting(true);
     try {
       let upload_id: string | undefined;
@@ -185,6 +188,20 @@ export function TasksView() {
 
   const active = tasks.filter((t) => !['merged', 'failed'].includes(t.status));
   const done = tasks.filter((t) => ['merged', 'failed'].includes(t.status));
+
+  if (!projectId || projectId === 'default') {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+        <div className="rounded-xl bg-subtle border border-border p-8 max-w-sm w-full">
+          <ListTodoEmpty />
+          <h2 className="text-base font-semibold text-primary mt-3">No project selected</h2>
+          <p className="text-sm text-[rgb(var(--muted-foreground))] mt-1.5">
+            Create a project first using the <strong className="text-primary font-semibold">+ Add</strong> button in the top bar, then come back here to spawn agents.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -14,12 +14,13 @@ interface SpawnOptions {
   taskType: string;
   model: string | null;
   repoPath: string;
+  repoUrl: string;
   defaultBranch: string;
   uploadId?: string | null;
 }
 
 export async function spawnAgent(opts: SpawnOptions): Promise<void> {
-  const { taskId, projectId, description, agentType, taskType, model, repoPath, uploadId } = opts;
+  const { taskId, projectId, description, agentType, taskType, model, repoPath, repoUrl, uploadId } = opts;
   const shortId = taskId.slice(0, 8);
   const branch = `feat/task-${shortId}`;
   const worktreePath = path.join(repoPath, '..', 'worktrees', `${projectId.slice(0, 8)}-${shortId}`);
@@ -44,7 +45,7 @@ export async function spawnAgent(opts: SpawnOptions): Promise<void> {
 
   execFile(
     scriptPath,
-    [projectId, taskId, description, agentType, model || '', repoPath, taskType || 'feature', attachDir],
+    [projectId, taskId, description, agentType, model || '', repoPath, repoUrl || '', taskType || 'feature', attachDir],
     { timeout: 30000 },
     (err) => {
       if (err) {

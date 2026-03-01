@@ -7,6 +7,11 @@ import * as path from 'path';
 const router = Router();
 const SCRIPTS_DIR = path.resolve(__dirname, '../../../../scripts');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
 interface Task {
   id: string;
   project_id: string;
@@ -38,6 +43,11 @@ router.get('/projects/:projectId/tasks', async (req: Request, res: Response) => 
   const { projectId } = req.params;
   const { status } = req.query;
 
+  if (!isValidUuid(projectId)) {
+    res.json([]);
+    return;
+  }
+
   try {
     let sql = `SELECT * FROM tasks WHERE project_id = $1`;
     const params: unknown[] = [projectId];
@@ -60,6 +70,11 @@ router.get('/projects/:projectId/tasks', async (req: Request, res: Response) => 
 router.post('/projects/:projectId/tasks', async (req: Request, res: Response) => {
   const { projectId } = req.params;
   const { title, description, agent_type = 'claude', task_type = 'feature', model, upload_id } = req.body;
+
+  if (!isValidUuid(projectId)) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
+  }
 
   if (!title || !description) {
     res.status(400).json({ error: 'title and description are required' });
@@ -102,6 +117,7 @@ router.post('/projects/:projectId/tasks', async (req: Request, res: Response) =>
       taskType: task_type,
       model: model || null,
       repoPath: project.repo_path,
+      repoUrl: project.repo_url,
       defaultBranch: project.default_branch,
       uploadId: upload_id || null,
     }).catch((err: Error) => console.error('spawnAgent error:', err));
@@ -170,7 +186,7 @@ router.post('/tasks/:id/retry', async (req: Request, res: Response) => {
 
   try {
     const tasks = await query<Task>(
-      `SELECT t.*, p.repo_path, p.default_branch
+      `SELECT t.*, p.repo_path, p.repo_url, p.default_branch
        FROM tasks t JOIN projects p ON p.id = t.project_id
        WHERE t.id = $1`,
       [id]
@@ -181,7 +197,7 @@ router.post('/tasks/:id/retry', async (req: Request, res: Response) => {
       return;
     }
 
-    const task = tasks[0] as Task & { repo_path: string; default_branch: string };
+    const task = tasks[0] as Task & { repo_path: string; repo_url: string; default_branch: string };
 
     await query(
       `UPDATE tasks SET status = 'pending', spawn_retries = spawn_retries + 1,
@@ -200,6 +216,7 @@ router.post('/tasks/:id/retry', async (req: Request, res: Response) => {
       taskType: (task as any).task_type || 'feature',
       model: task.model,
       repoPath: task.repo_path,
+      repoUrl: task.repo_url,
       defaultBranch: task.default_branch,
     }).catch((err: Error) => console.error('spawnAgent retry error:', err));
 
