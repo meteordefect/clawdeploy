@@ -1,272 +1,167 @@
-# Ready to Deploy! 🚀
+# ClawDeploy v4 — Deploy Checklist
 
 ## What's Complete
 
-### ✅ Agent Bridge Service
-- Full TypeScript implementation in `deploy/agent-bridge/`
-- Docker integration via docker-compose.yml
-- Deployment commands in deploy.sh
-- Configuration via environment variables
-- Comprehensive documentation
+### ✅ Database (Phase 1)
+- `002_projects_tasks.sql` — `projects` and `tasks` tables
+- Control API routes: `projects.ts`, `tasks.ts`
+- Task runner service with cron for agent status checks
 
-### ✅ Documentation Cleanup
-**Root level (clean & user-facing):**
-- README.md - Project overview
-- QUICK_START.md - Quick start guide
-- DESIGN.md - Design reference
-- CHANGELOG.md - Version history
+### ✅ Sub-Agent Scripts (Phase 2)
+- `scripts/spawn-agent.sh` — worktree + tmux + claude/codex/kimi
+- `scripts/check-agents.sh` — PR detection + CI status + Telegram notify
+- `scripts/cleanup-agents.sh` — 7-day cleanup of merged/failed worktrees
+- `scripts/merge-pr.sh` — gh pr merge + status update + worktree cleanup
 
-**Organized in `docs/`:**
-- `docs/guides/` - User guides (AGENT_CONFIG.md)
-- `docs/archive/agent-bridge/` - Agent bridge implementation docs
-- `docs/archive/migration/` - v2→v3 migration docs
+### ✅ Dashboard (Phases 3–6)
+- shadcn/ui component library installed
+- Project tab bar navigation
+- Tasks view (Card + Badge + Dialog + DropdownMenu)
+- Merge Queue view (Table + CI badges + approve/merge/request-changes)
+- Activity view (per-project event log)
+- Chat view scoped per project
 
-### ✅ Control Plane
-- PostgreSQL database with migrations
-- Control API (Express + TypeScript)
-- React dashboard with polling
-- Agent registration and heartbeat endpoints
-- Command queue system
-
-### ✅ Deployment Automation
-- Terraform for infrastructure
-- Ansible for configuration
-- Docker Compose for services
-- One-command deployment: `./deploy.sh init`
+---
 
 ## Pre-Deployment Checklist
 
-Before running `./deploy.sh init`:
-
-### 1. Environment Configuration
+### Environment (deploy/.env)
 
 ```bash
 cd deploy
 cp .env.example .env
-nano .env
 ```
 
-**Required settings:**
-- ✅ `POSTGRES_PASSWORD` - Generate secure password
-- ✅ `DATABASE_URL` - Update with same password
-- ✅ `BETA_PASSWORD` - Generate secure password for dashboard
-- ✅ `DOMAIN` - Your domain or server IP
+Required:
+- [ ] `POSTGRES_PASSWORD` — `openssl rand -base64 32`
+- [ ] `DATABASE_URL` — `postgresql://clawdeploy:<pass>@postgres:5432/clawdeploy`
+- [ ] `BETA_PASSWORD` — `openssl rand -base64 16`
+- [ ] `DOMAIN` — your server IP or domain
+- [ ] `ZHIPU_API_KEY` — for OpenClaw GLM manager (chat)
 
-**Optional (for agent bridge):**
-- `AGENT_NAME` - Name for your local agent
-- `AGENT_DESCRIPTION` - Description
-- `MOONSHOT_API_KEY` - API key for Moonshot AI (if using)
+Optional but needed for sub-agents:
+- [ ] `MOONSHOT_API_KEY` — Kimi K2.5 tasks
+- [ ] `ANTHROPIC_API_KEY` — Claude Code tasks (or use claude CLI auth)
 
-### 2. Terraform Configuration
+### Terraform (deploy/terraform/terraform.tfvars)
 
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars
-```
+- [ ] `hcloud_token`
+- [ ] `ssh_public_key`
+- [ ] Server type (default: `cx22`) — sub-agents need RAM; `cx32` recommended
 
-**Required:**
-- Hetzner API token
-- SSH key path
-- Server location (default: fsn1)
+### Server Requirements
 
-### 3. Ansible Configuration
+These must be installed on the server (not in Docker) for sub-agents to work:
 
-```bash
-cd ansible
-# Update inventory.ini after Terraform creates server
-```
+- [ ] `claude` CLI — `npm install -g @anthropic-ai/claude-cli`
+- [ ] `gh` CLI — authenticated with `gh auth login`
+- [ ] `tmux`
+- [ ] `git` with SSH access to your repos
+
+---
 
 ## Deployment Steps
 
-### Option 1: Full Stack (Recommended)
-
-Deploy everything from scratch:
+### Fresh VPS
 
 ```bash
 cd deploy
-./deploy.sh init
+./deploy.sh init      # Terraform + Ansible + Docker
+./deploy.sh migrate   # Run 001 + 002 migrations
 ```
 
-This will:
-1. Provision VPS with Terraform
-2. Deploy services with Ansible
-3. Set up Nginx with SSL
-4. Start PostgreSQL, Control API, and Dashboard
-
-**Expected time:** 5-10 minutes
-
-### Option 2: Control Plane Only
-
-If you already have infrastructure:
+### Existing Server (redeploy)
 
 ```bash
 cd deploy
-./deploy.sh deploy
+./deploy.sh deploy    # Rebuild + restart containers
+./deploy.sh migrate   # Run any pending migrations
 ```
 
-### Option 3: Agent Bridge Only
-
-Start local agent bridge:
-
-```bash
-cd deploy
-./deploy.sh agent-bridge-build
-./deploy.sh agent-bridge-start
-```
+---
 
 ## Verification Steps
 
-### 1. Check Services
+### 1. Services healthy
 
 ```bash
 ./deploy.sh status
 ```
 
-Expected output:
+Expected:
 - ✅ PostgreSQL: healthy
 - ✅ Control API: healthy
 - ✅ Dashboard: running
 - ✅ Nginx: active
 
-### 2. Access Dashboard
-
-Open browser: `http://your-domain.com` or `http://your-server-ip`
-
-Login with:
-- Username: Value from `BETA_USER` in .env
-- Password: Value from `BETA_PASSWORD` in .env
-
-### 3. Register an Agent
+### 2. Migration applied
 
 ```bash
-cd deploy
-./deploy.sh agent-bridge-start
-./deploy.sh agent-bridge-logs
-```
-
-Check dashboard → Navigate to **Agents** view → Should see agent listed as **ONLINE**
-
-### 4. List Registered Agents
-
-```bash
-./deploy.sh list-agents
-```
-
-Should return JSON array with registered agent(s).
-
-## Post-Deployment
-
-### Monitor Logs
-
-```bash
-# All services
-./deploy.sh logs
-
-# Agent bridge only
-./deploy.sh agent-bridge-logs
-
-# SSH to server
 ./deploy.sh ssh
+docker exec clawdeploy-postgres psql -U clawdeploy -c "\dt"
+# Should show: projects, tasks, events, agents, missions, commands
 ```
 
-### Create Backup
+### 3. Dashboard loads
+
+Open `http://YOUR_DOMAIN` — project tab bar should appear with a `+ Add` button.
+
+### 4. Server tooling
 
 ```bash
-./deploy.sh backup
+./deploy.sh ssh
+claude --version
+gh auth status
+tmux -V
+git --version
 ```
 
-### Update Services
+### 5. Spawn a test task
 
-```bash
-# Update control API
-./deploy.sh api
-
-# Update dashboard
-./deploy.sh dashboard
-
-# Update agent bridge
-./deploy.sh agent-bridge-restart
-```
-
-## Architecture Overview
-
-```
-User → Browser → Nginx (80/443) → Dashboard (3000)
-                    ↓
-              Control API (3001)
-                    ↓
-              PostgreSQL (5432)
-                    ↑
-              Agent Bridge (local)
-                    ↓ (future)
-              OpenClaw Gateway
-```
-
-## Next Steps After Deployment
-
-1. **Register Agents** - Start agent bridge on machines running OpenClaw
-2. **Create Missions** - Use dashboard to create missions
-3. **Queue Commands** - Assign commands to agents
-4. **Monitor Activity** - Watch events feed for real-time updates
-5. **Manage Files** - Browse/edit OpenClaw config files
-
-## Troubleshooting
-
-### Dashboard not loading
-- Check Nginx: `docker ps | grep nginx`
-- Check logs: `./deploy.sh logs`
-- Verify port 80/443 open in firewall
-
-### API not responding
-- Check control-api: `docker ps | grep control-api`
-- Check database connection: `docker logs clawdeploy-control-api`
-- Verify DATABASE_URL in .env
-
-### Agent not appearing in dashboard
-- Check agent bridge logs: `./deploy.sh agent-bridge-logs`
-- Verify CONTROL_API_URL is correct
-- Check network connectivity
-- Wait 30 seconds for first heartbeat
-
-### Can't login to dashboard
-- Verify BETA_USER and BETA_PASSWORD in .env
-- Check Nginx basic auth config
-- Try clearing browser cache
-
-## Success Criteria ✅
-
-You'll know deployment succeeded when:
-
-1. ✅ Dashboard loads at your domain/IP
-2. ✅ Login works with credentials from .env
-3. ✅ Overview page shows system stats
-4. ✅ Agent bridge starts without errors
-5. ✅ Agent appears in Agents view with green status
-6. ✅ Events feed shows agent.registered event
-7. ✅ No errors in `./deploy.sh logs`
-
-## Documentation
-
-- **README.md** - Project overview
-- **QUICK_START.md** - Quick start guide
-- **docs/guides/AGENT_CONFIG.md** - Agent configuration
-- **deploy/agent-bridge/README.md** - Agent bridge docs
-- **docs/archive/** - Implementation history (for reference)
-
-## Support
-
-If you encounter issues:
-1. Check `./deploy.sh status`
-2. Review `./deploy.sh logs`
-3. Check documentation in `docs/`
-4. Review archived implementation docs in `docs/archive/`
+Create a project in the dashboard pointing to a real repo on the server, then create a simple task. Check:
+- Task status moves to `spawned` then `coding`
+- `tmux ls` shows a `claw-<id>` session on the server
 
 ---
 
-**You're ready to deploy!** 🎯
+## Post-Deployment
 
+### Telegram Notifications (optional)
+
+Set in server environment for `check-agents.sh`:
 ```bash
-cd deploy
-./deploy.sh init
+TELEGRAM_BOT_TOKEN=your-token
+TELEGRAM_CHAT_ID=your-chat-id
+```
+
+Notifies on PR opened and CI passing.
+
+### Check-Agents Cron
+
+The Control API starts a `setInterval` every 5 minutes that runs `check-agents.sh`. This detects PR creation and CI status automatically. No extra cron config needed.
+
+### Cleanup Cron (optional)
+
+For 7-day worktree cleanup, add to server crontab:
+```bash
+0 2 * * * /path/to/clawdeploy/scripts/cleanup-agents.sh
+```
+
+---
+
+## Troubleshooting
+
+| Symptom | Check |
+|---------|-------|
+| Task stuck at `spawned` | `tmux ls` on server; `tmux attach -t claw-<id>` to see agent output |
+| No PR detected | `gh auth status` on server; check check-agents.sh logs in control-api |
+| Dashboard shows no projects | Migration not applied — run `./deploy.sh migrate` |
+| Chat not working | Verify `ZHIPU_API_KEY` in `.env`; check openclaw-gateway container |
+| Merge fails | `gh auth status` on server; verify `REPO_SLUG` resolves correctly |
+
+---
+
+**Ready to deploy:**
+```bash
+cd deploy && ./deploy.sh init && ./deploy.sh migrate
 ```
