@@ -128,7 +128,8 @@ Constraints — do NOT violate these:
 - Do NOT add, remove, or upgrade dependencies unless the task explicitly requires it.
 - Do NOT rewrite or refactor files unrelated to the task description.
 - Do NOT change CI/CD configuration, environment variables, or secrets.
-- Do NOT modify git configuration or branch settings."
+- Do NOT modify git configuration or branch settings.
+- Do NOT run gh pr merge under any circumstances. Your job ends at gh pr create."
 
 # --- 3. Launch in tmux ---
 tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 2>/dev/null || true
