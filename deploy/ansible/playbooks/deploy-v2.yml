@@ -74,6 +74,8 @@
           - "--exclude=docs"
           - "--exclude=*.pyc"
           - "--exclude=__pycache__"
+          - "--exclude=main-agent/dist"
+          - "--exclude=main-agent/node_modules"
 
     - name: Generate random PostgreSQL password
       shell: openssl rand -base64 32 | tr -d "=+/" | cut -c1-32
