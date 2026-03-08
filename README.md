@@ -1,274 +1,248 @@
-# ClawDeploy v4
+# ClawDeploy v2
 
-**Git-project-centric AI agent orchestrator — spawn coding sub-agents, create PRs, queue merges for human approval.**
+**AI agent orchestration platform. Talk to Phoung (your PM). She queues tasks, spawns coding sub-agents, and surfaces PRs for your review.**
 
-You talk to an OpenClaw manager (GLM). It spawns coding sub-agents (Claude Code, Codex, Kimi K2.5) that work in isolated git worktrees, push branches, and open PRs. You come back and approve merges. That's it.
+---
+
+## What It Does
+
+You chat with **Phoung** — a persistent AI project manager who knows your business, your projects, and your history. When you assign a task, Phoung spins up a Docker sub-agent (Claude Code, Codex, etc.) that clones your repo, writes the code, pushes a branch, and opens a PR. You come back to the Review UI and merge or reject.
+
+```
+You (chat)
+    │
+    ▼
+Phoung — main agent (Kimi K2.5 / GLM 4.7)
+    │  Reads/writes .md memory files
+    │  Knows all your projects
+    │  Queues tasks, spawns sub-agents
+    │
+    ▼
+Sub-Agent (Docker container)
+    │  Clones repo → writes code → pushes branch → opens PR
+    │
+    ▼
+GitHub PR ← You review and merge in the Review UI
+```
+
+---
 
 ## Architecture
 
-```
-You (Dashboard — per-project tabs)
-        │
-        ▼
-  OpenClaw Manager (GLM-4.7-flash)
-  ├── Persistent, scoped per project
-  ├── Routes tasks to the right model
-  └── Calls spawn-agent.sh per task
-        │
-        ▼
-  Sub-Agents (tmux sessions)
-  ├── Each works in an isolated git worktree
-  ├── Commits → pushes → gh pr create
-  └── Exits when done
-        │
-        ▼
-  Merge Queue (dashboard)
-  ├── PRs listed per project with CI status
-  └── You approve → merge
-```
+**3 Docker containers:**
 
-## Model Routing
+| Container | What | Port |
+|-----------|------|------|
+| `clawdeploy-api` | Python FastAPI — Phoung's brain + API for the UI | 8000 (internal) |
+| `clawdeploy-ui` | React Review UI — chat, tasks, logs | 3000 (internal) |
+| `clawdeploy-nginx` | Reverse proxy | 8080 |
 
-| Role | Model | When |
-|------|-------|------|
-| Manager / Chat / Planning | GLM-4.7-flash | Always-on |
-| Coding (default) | Kimi K2.5 | Most tasks — fast, cheap |
-| Coding (complex) | Claude Sonnet | Multi-file, refactors |
-| Coding (alternative) | Codex / GPT-4o | User override |
+**No database.** All state lives in `.md` files in `memory/`.
 
-## Quick Start
+**Sub-agents** are spawned on-demand as Docker containers. They run, push a PR, and exit.
 
-### Prerequisites
+**Two cron jobs** run on the server:
+- Hourly: wakes Phoung to process the task queue
+- Daily at 2am: housekeeping (organise conversations, rename memory files)
 
-- Hetzner Cloud account + API token
-- SSH key pair
-- Domain name (optional)
-- Local machine with: Terraform ≥ 1.0, Ansible ≥ 2.15, Docker
-- Server needs: `claude` CLI, `gh` CLI, `tmux`, `git` installed
+---
 
-### Initial Setup
-
-1. **Clone and configure**
-   ```bash
-   git clone --recursive https://github.com/meteordefect/clawdeploy.git
-   cd clawdeploy/deploy
-   cp .env.example .env
-   vim .env
-   ```
-
-   Required env vars:
-   - `POSTGRES_PASSWORD` — generate a secure password
-   - `DATABASE_URL` — update with the same password
-   - `BETA_PASSWORD` — dashboard basic auth password
-   - `DOMAIN` — your domain or server IP
-   - `ZHIPU_API_KEY` — for OpenClaw GLM manager
-
-2. **Configure Terraform**
-   ```bash
-   cd terraform
-   cp terraform.tfvars.example terraform.tfvars
-   vim terraform.tfvars  # set hcloud_token, ssh_public_key
-   cd ..
-   ```
-
-3. **Deploy**
-   ```bash
-   ./deploy.sh init
-   ```
-
-4. **Run the DB migration** (new `projects` + `tasks` tables)
-   ```bash
-   ./deploy.sh migrate
-   ```
-
-### Access the Dashboard
+## Memory Structure
 
 ```
-URL:      http://YOUR_SERVER_IP
-Username: (from .env BETA_USER)
-Password: (from .env BETA_PASSWORD)
+memory/
+├── system-prompt.md          ← Phoung's identity, rules, and behaviour
+├── subagent-prompt.md        ← Sub-agent identity template (injected at spawn)
+├── overview.md               ← All projects: status, stack, repo, folder
+├── conversations/
+│   └── inbox/                ← New chats land here; daily cron sorts them
+├── projects/
+│   └── <project-name>/
+│       ├── context.md        ← Full project context: stack, repo, priorities
+│       ├── memories/         ← Decisions, lessons, technical notes
+│       ├── conversations/    ← Sorted conversation history
+│       └── tasks/
+│           ├── active/       ← Live tasks (.md files with frontmatter)
+│           └── completed/
+└── general/
+    ├── memories/             ← Cross-project preferences and notes
+    └── conversations/
 ```
 
-## Project Structure
+Phoung loads only what's needed: system prompt + overview always, then the relevant project's context and memories for that conversation.
+
+---
+
+## File Structure
 
 ```
 clawdeploy/
-├── README.md
-├── MIGRATION_PLAN.md          # v4 full architecture spec
-├── CHANGELOG.md
-├── scripts/
-│   ├── spawn-agent.sh         # Creates worktree + tmux + launches sub-agent
-│   ├── check-agents.sh        # Cron: detects PR creation + CI status
-│   ├── cleanup-agents.sh      # Daily: removes merged/failed worktrees
-│   └── merge-pr.sh            # gh pr merge + status update + cleanup
-└── deploy/
-    ├── deploy.sh              # Main deployment script
-    ├── .env.example           # Environment template
-    ├── docker-compose.yml     # Service definitions
-    ├── control-api/           # Node.js + Express + PostgreSQL
-    │   └── src/
-    │       ├── routes/
-    │       │   ├── projects.ts    # CRUD for projects
-    │       │   └── tasks.ts       # CRUD + merge queue + activity
-    │       ├── services/
-    │       │   └── task-runner.ts # Calls spawn-agent.sh, runs cron
-    │       └── migrations/
-    │           ├── 001_initial.sql
-    │           └── 002_projects_tasks.sql
-    ├── dashboard/             # React + TypeScript + Vite + shadcn/ui
-    │   └── src/
-    │       ├── views/
-    │       │   ├── TasksView.tsx
-    │       │   ├── MergeQueueView.tsx
-    │       │   └── ActivityView.tsx
-    │       └── components/
-    │           ├── Layout.tsx     # Project tab bar
-    │           └── chat/
-    ├── terraform/
-    └── ansible/
+├── main-agent/
+│   ├── agent.py              # Core agent loop — parses actions, dispatches
+│   ├── pi_client.py          # LLM API client (Kimi K2.5, GLM, Claude, Pi)
+│   ├── spawner.py            # Docker sub-agent launcher
+│   ├── memory.py             # .md file read/write, activity logs
+│   ├── github_client.py      # GitHub API (PRs, merge, status)
+│   ├── housekeeping.py       # Daily cron: sort conversations, collect agent logs
+│   ├── cron_handler.py       # Hourly cron: wake Phoung
+│   ├── api.py                # FastAPI — serves tasks, chat, logs, models
+│   ├── config.py             # Settings and API keys
+│   └── requirements.txt
+├── subagent/
+│   ├── Dockerfile            # Sub-agent container image
+│   └── entrypoint.sh         # Clone → branch → run agent → PR
+├── review-ui/
+│   └── src/
+│       ├── App.tsx            # Main layout, tabs
+│       ├── ChatView.tsx       # Chat with Phoung, model switcher, history
+│       ├── TasksView.tsx      # Task cards with activity timeline
+│       └── LogsView.tsx       # Container log viewer
+├── memory/                   # All persistent state (git-tracked)
+├── deploy/
+│   ├── deploy.sh             # Deploy script
+│   └── ansible/
+│       └── playbooks/
+│           └── deploy-v2.yml # Single Ansible playbook
+├── docker-compose.yml
+├── nginx.conf
+└── .env                      # API keys and config (see below)
 ```
 
-## Dashboard Views
+---
 
-- **Tasks** — create tasks, pick agent type, monitor status per project
-- **Merge Queue** — PRs ready for review with CI status; one-click merge
-- **Chat** — talk to the OpenClaw manager, scoped per project
-- **Activity** — per-project event log
+## Setup
+
+### Prerequisites
+
+- Hetzner VPS (or any Linux server with Docker)
+- SSH key configured
+- Ansible ≥ 2.15 on your local machine
+- API keys (see below)
+
+### Configuration
+
+Copy and fill in your `.env` at the repo root:
+
+```env
+# Primary LLM: Kimi K2.5 (Moonshot AI)
+MOONSHOT_API_KEY=sk-...
+KIMI_MODEL=kimi-k2.5
+DEFAULT_MODEL=kimi-k2.5
+
+# Secondary LLM: GLM 4.7 (ZhipuAI)
+ZHIPU_API_KEY=...
+GLM_MODEL=glm-4.7-flash
+
+# Optional LLMs
+PI_API_KEY=
+ANTHROPIC_API_KEY=
+
+# GitHub (required for sub-agents to push branches and open PRs)
+# Use a fine-grained PAT scoped to your target repos
+# Permissions needed: Contents (Read/Write), Pull requests (Read/Write)
+GITHUB_TOKEN=github_pat_...
+
+# Sub-agent settings
+MAX_CONCURRENT_SUBAGENTS=3
+SUBAGENT_IMAGE=clawdeploy/subagent:latest
+SUBAGENT_MEMORY_LIMIT=4g
+SUBAGENT_CPUS=2
+```
+
+Get API keys:
+- **Kimi K2.5**: [platform.moonshot.cn](https://platform.moonshot.cn)
+- **GLM 4.7**: [open.bigmodel.cn](https://open.bigmodel.cn)
+- **GitHub PAT**: [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+
+### Deploy
+
+```bash
+source .env
+cd deploy
+./deploy.sh deploy-v2
+```
+
+### Access
+
+Open an SSH tunnel to the server:
+
+```bash
+./deploy.sh tunnel
+```
+
+Then open `http://localhost:8080` in your browser.
+
+---
 
 ## Task Lifecycle
 
 ```
-pending → spawned → coding → pr_open → ci_pending → review → merged
-                                                            → failed
+pending → coding → pr_open → ready_to_merge → [you merge]
+                           ↘ needs_human → [you answer] → coding
+                           ↘ failed
 ```
 
-Each task = one sub-agent = one git worktree = one branch = one PR.
+Each task is a `.md` file in `memory/projects/<project>/tasks/active/` with frontmatter tracking status, container ID, branch, and PR number.
 
-## API Endpoints
-
-### Projects
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/projects` | List all projects |
-| `POST` | `/api/projects` | Create project |
-| `PUT` | `/api/projects/:id` | Update project |
-| `DELETE` | `/api/projects/:id` | Delete project |
-
-### Tasks
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/projects/:id/tasks` | List tasks for project |
-| `POST` | `/api/projects/:id/tasks` | Create task (spawns sub-agent) |
-| `GET` | `/api/tasks/:id` | Task detail |
-| `POST` | `/api/tasks/:id/cancel` | Cancel task |
-| `POST` | `/api/tasks/:id/retry` | Retry failed task |
-| `GET` | `/api/projects/:id/merge-queue` | PRs ready for review |
-| `POST` | `/api/tasks/:id/merge` | Approve and merge PR |
-| `GET` | `/api/projects/:id/activity` | Project event log |
-
-### Legacy (deprecated, kept for v3 compatibility)
-
-`/api/agents/*`, `/api/missions/*`, `/api/commands/*` — still served, no new writes.
-
-## Database Schema
-
-### `projects`
-```sql
-id, name, repo_url, repo_path, default_branch, created_at, updated_at
-```
-
-### `tasks`
-```sql
-id, project_id, title, description, status, agent_type, model,
-branch, worktree_path, tmux_session, pr_number, pr_url, ci_status,
-spawn_retries, created_at, started_at, completed_at
-```
-
-### `events`
-Audit trail — types: `task_created`, `agent_spawned`, `agent_exited`,
-`pr_opened`, `ci_passed`, `ci_failed`, `merged`, `merge_conflict`
-
-## Deployment Commands
-
-```bash
-./deploy.sh init          # Fresh VPS → full control plane
-./deploy.sh deploy        # Redeploy services (existing server)
-./deploy.sh migrate       # Run DB migrations
-./deploy.sh status        # Check service health
-./deploy.sh logs          # View logs
-./deploy.sh ssh           # SSH to server
-./deploy.sh backup        # Backup database + files
-./deploy.sh api           # Restart Control API only
-./deploy.sh dashboard     # Restart Dashboard only
-```
-
-## Security
-
-- **Dashboard**: Nginx HTTP Basic Auth
-- **Network**: PostgreSQL internal-only; ports 22, 80, 443 only
-- **Sub-agents**: run under the server's OS user, scoped to isolated git worktrees
-
-## Cost Estimate
-
-| Item | Cost |
-|------|------|
-| Hetzner CX22 (4 GB RAM) | ~$6.50/month |
-| Kimi K2.5 (100 tasks/day) | ~$45–65/month |
-| GLM-4.7-flash (manager) | ~$2–5/month |
-
-## What's Not Done Yet
-
-- **Auto-merge** — requires CI integration + confidence scoring
-- **Multi-model PR review** — manager spawning a review agent to read diffs
-- **WebSocket push** — dashboard still polls; good enough for now
-- **Kimi K2.5 CLI** — currently routed through OpenClaw; needs thin wrapper
-
-## Maintenance
-
-### Backup & Restore
-
-```bash
-# Backup
-./deploy.sh backup
-
-# Restore (on server)
-docker compose down
-docker compose up -d postgres
-docker exec -i clawdeploy-postgres psql -U clawdeploy < backup.sql
-docker compose up -d
-```
-
-### Logs
-
-```bash
-./deploy.sh logs
-# or on server:
-docker compose logs -f control-api
-```
-
-## Local Development
-
-```bash
-# Control API
-cd deploy/control-api
-npm install && npm run dev
-
-# Dashboard
-cd deploy/dashboard
-npm install && npm run dev
-```
-
-## Additional Documentation
-
-- **[MIGRATION_PLAN.md](MIGRATION_PLAN.md)** — full v4 architecture and phase breakdown
-- **[DEPLOY_READY.md](DEPLOY_READY.md)** — deployment checklist
-- **[CHANGELOG.md](CHANGELOG.md)** — version history
-- **[docs/guides/AGENT_CONFIG.md](docs/guides/AGENT_CONFIG.md)** — agent configuration
+When a sub-agent finishes, its logs are captured to `<task-id>-run-<N>.log` and an activity timeline is written to `<task-id>-activity.jsonl`. You can view both in the Tasks tab of the Review UI.
 
 ---
 
-**Version**: 4.0  
-**Last Updated**: March 1, 2026  
-**Maintainer**: Marten (Friend Labs) — marten@friendlabs.ai
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check |
+| `GET` | `/tasks` | List all active tasks |
+| `GET` | `/tasks/{id}` | Single task detail |
+| `POST` | `/tasks/{id}/merge` | Merge the task's PR |
+| `POST` | `/tasks/{id}/reject` | Close the task's PR |
+| `GET` | `/tasks/{id}/activity` | Full activity timeline |
+| `GET` | `/tasks/{id}/runs/{n}/log` | Sub-agent output for run N |
+| `POST` | `/chat` | Send message to Phoung |
+| `GET` | `/conversations` | List all conversations |
+| `GET` | `/conversations/{id}` | Load conversation history |
+| `POST` | `/conversations/new` | Start a new conversation |
+| `GET` | `/models` | Available LLM models |
+| `GET` | `/projects` | List projects from memory |
+| `GET` | `/logs/{service}` | Container logs (api/ui/nginx) |
+
+---
+
+## Models
+
+Phoung supports multiple LLMs. The active model is selected in the chat UI. The server default is set by `DEFAULT_MODEL` in `.env`.
+
+| Model | Provider | ID | Best for |
+|-------|----------|----|----------|
+| Kimi K2.5 | Moonshot AI | `kimi-k2.5` | Default — strong reasoning, good instruction following |
+| GLM 4.7 | ZhipuAI | `glm-4.7-flash` | Fast, cheap, good for routing |
+| Claude | Anthropic | `claude-sonnet-4-...` | Optional |
+
+Sub-agents use Claude Code or Codex — set by `AGENT_TYPE` when spawning.
+
+---
+
+## Security
+
+- **Dashboard**: Nginx reverse proxy, server-level access control
+- **Sub-agents**: isolated Docker containers, resource-limited (`--memory=4g --cpus=2`)
+- **GitHub**: fine-grained PAT scoped to specific repos
+- **Phoung never merges**: only you merge, via the UI or GitHub directly
+- **Action allowlist**: enforced in code — Phoung can only execute actions from `ALLOWED_ACTIONS`
+
+---
+
+## Cost Estimate
+
+| Item | Est. Cost |
+|------|-----------|
+| Hetzner CX22 (4 GB RAM) | ~$6.50/month |
+| Kimi K2.5 (active use) | ~$5–20/month |
+| GLM 4.7-flash (routing) | ~$1–3/month |
+
+---
+
+**Maintainer**: Marten — Friend Labs  
+**Version**: 2.0  
+**Stack**: Python 3.12, FastAPI, React, Vite, Tailwind, Docker, Ansible

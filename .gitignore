@@ -47,7 +47,16 @@ backups/
 *.log
 logs/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
 # Temporary files
 tmp/
 temp/
 .cache/
+
+# Memory logs (auto-generated)
+memory/logs/
