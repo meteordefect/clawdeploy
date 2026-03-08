@@ -84,29 +84,23 @@
       copy:
         dest: /opt/clawdeploy/.env
         content: |
-          # ZhipuAI (GLM)
-          ZHIPU_API_KEY={{ lookup('env', 'ZHIPU_API_KEY') | default(zhipu_api_key | default(''), true) }}
-          GLM_MODEL={{ lookup('env', 'GLM_MODEL') | default('glm-4.7-flash', true) }}
+          # Kimi For Coding (pi-mono provider: kimi-coding)
+          KIMI_API_KEY={{ lookup('env', 'KIMI_API_KEY') | default(lookup('env', 'MOONSHOT_API_KEY'), true) | default('', true) }}
 
-          # Moonshot (Kimi)
-          MOONSHOT_API_KEY={{ lookup('env', 'MOONSHOT_API_KEY') | default(moonshot_api_key | default(''), true) }}
-          KIMI_MODEL={{ lookup('env', 'KIMI_MODEL') | default('kimi-k2.5', true) }}
-          DEFAULT_MODEL={{ lookup('env', 'DEFAULT_MODEL') | default('kimi-k2.5', true) }}
-          FALLBACK_LLM=moonshot
+          # ZAI / GLM (pi-mono provider: zai)
+          ZAI_API_KEY={{ lookup('env', 'ZAI_API_KEY') | default(lookup('env', 'ZHIPU_API_KEY'), true) | default('', true) }}
 
-          # Inflection Pi (optional)
-          PI_API_KEY={{ lookup('env', 'PI_API_KEY') | default(pi_api_key | default(''), true) }}
-          PI_API_URL=https://api.inflection.ai/v1/chat/completions
-          PI_MODEL=inflection_3_pi
+          # Anthropic (optional)
+          ANTHROPIC_API_KEY={{ lookup('env', 'ANTHROPIC_API_KEY') | default('', true) }}
 
-          # Anthropic Claude (optional)
-          ANTHROPIC_API_KEY={{ lookup('env', 'ANTHROPIC_API_KEY') | default(anthropic_api_key | default(''), true) }}
-          ANTHROPIC_MODEL=claude-sonnet-4-20250514
+          # Default model (pi-mono provider/model format, empty = auto-select)
+          DEFAULT_MODEL={{ lookup('env', 'DEFAULT_MODEL') | default('', true) }}
 
           # GitHub
-          GITHUB_TOKEN={{ lookup('env', 'GITHUB_TOKEN') | default(github_token | default(''), true) }}
+          GITHUB_TOKEN={{ lookup('env', 'GITHUB_TOKEN') | default('', true) }}
 
           # Sub-agent
+          SUBAGENT_MODEL={{ lookup('env', 'SUBAGENT_MODEL') | default('', true) }}
           SUBAGENT_IMAGE=clawdeploy/subagent:latest
           SUBAGENT_MEMORY_LIMIT=4g
           SUBAGENT_CPUS=2
@@ -115,6 +109,7 @@
           # API
           API_HOST=0.0.0.0
           API_PORT=8000
+          MEMORY_DIR=/app/memory
         mode: '0600'
 
     - name: Build and start v2 services
@@ -127,19 +122,20 @@
       args:
         chdir: /opt/clawdeploy
 
-    - name: Install hourly cron - wake Pi
+    - name: Install hourly cron - wake Phoung
       cron:
-        name: "ClawDeploy hourly: wake Pi"
+        name: "ClawDeploy hourly: wake Phoung"
         minute: "0"
         hour: "*"
-        job: "docker exec clawdeploy-api python cron_handler.py >> /var/log/clawdeploy-cron.log 2>&1"
+        job: "curl -s -X POST http://127.0.0.1:8000/cron/wake >> /var/log/clawdeploy-cron.log 2>&1"
 
-    - name: Install daily cron - housekeeping
+    - name: Remove old Python cron jobs if present
       cron:
-        name: "ClawDeploy daily: housekeeping"
-        minute: "0"
-        hour: "2"
-        job: "docker exec clawdeploy-api python housekeeping.py >> /var/log/clawdeploy-housekeeping.log 2>&1"
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "ClawDeploy hourly: wake Pi"
+        - "ClawDeploy daily: housekeeping"
 
     - name: Verify services are running
       command: docker compose ps
