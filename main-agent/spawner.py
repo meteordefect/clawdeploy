@@ -1,6 +1,7 @@
 import docker
 
 from config import (
+    ANTHROPIC_API_KEY,
     GITHUB_TOKEN,
     MAX_CONCURRENT_SUBAGENTS,
     SUBAGENT_CPUS,
@@ -103,6 +104,7 @@ def spawn(task_id: str, project: str, prompt: str, agent_type: str = "claude"):
             detach=True,
             environment={
                 "GITHUB_TOKEN": GITHUB_TOKEN,
+                "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
                 "TASK_ID": task_id,
                 "BRANCH": branch,
                 "PROMPT": full_prompt,
