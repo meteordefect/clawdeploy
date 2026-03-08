@@ -96,7 +96,7 @@ services:
   # Start with: docker compose --profile openclaw-gateway up -d openclaw-gateway
   openclaw-gateway:
     build:
-      context: ../openclaw-source
+      context: ./openclaw-source
       dockerfile: Dockerfile
       args:
         OPENCLAW_DOCKER_APT_PACKAGES: ""

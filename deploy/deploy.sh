@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# ClawDeploy v3 - Deployment Script
+# ClawDeploy v4 - Deployment Script
 # Usage: ./deploy.sh [command]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -138,18 +138,33 @@ cmd_init() {
     check_env
     
     log_info "Step 1: Terraform Init"
-    cmd_terraform_init
-    
+    if [ -d terraform/.terraform ]; then
+        log_info "Terraform already initialized, skipping init"
+    else
+        cmd_terraform_init
+    fi
+
     log_info "Step 2: Provision Infrastructure"
     cmd_terraform_apply
     
-    log_info "Step 3: Wait for SSH (30s)"
-    sleep 30
-    
+    log_info "Step 3: Wait for SSH to become available..."
+    SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
+    for i in $(seq 1 24); do
+        if ssh -i ~/.ssh/friendlabs-deploy -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@$SERVER_IP exit 2>/dev/null; then
+            log_success "SSH ready"
+            break
+        fi
+        log_info "Waiting for SSH... ($((i*5))s)"
+        sleep 5
+    done
+
     log_info "Step 4: Deploy Services"
     cmd_ansible_deploy
-    
-    log_success "ClawDeploy Control Plane is ready!"
+
+    log_info "Step 5: Run Database Migrations"
+    cmd_ansible_migrate
+
+    log_success "ClawDeploy v4 Control Plane is ready!"
     log_info "Open dashboard via SSH tunnel: ./deploy.sh tunnel"
 }
 
@@ -188,6 +203,17 @@ cmd_nginx() {
     ansible-playbook playbooks/site.yml --tags nginx
     cd ..
     log_success "Nginx updated"
+}
+
+cmd_deploy_v2() {
+    check_env
+    load_env
+    log_info "Deploying ClawDeploy v2..."
+    cd ansible
+    ansible-playbook playbooks/deploy-v2.yml
+    cd ..
+    log_success "ClawDeploy v2 deployed!"
+    log_info "Open dashboard via SSH tunnel: ./deploy.sh tunnel"
 }
 
 cmd_tunnel() {
@@ -411,7 +437,7 @@ cmd_check_ssl() {
 
 cmd_help() {
     cat <<EOF
-${GREEN}ClawDeploy v3 - Deployment Tool${NC}
+${GREEN}ClawDeploy v4 - Deployment Tool${NC}
 
 ${BLUE}Usage:${NC}
   ./deploy.sh [command]
@@ -475,21 +501,30 @@ ${BLUE}SSL/HTTPS Commands:${NC}
 ${BLUE}Destructive Commands:${NC}
   destroy           Tear down everything (DESTRUCTIVE)
 
-${BLUE}Examples:${NC}
-  ${GREEN}# Deploy everything to VPS (control plane + agent bridge):${NC}
+${BLUE}Fresh Server Setup (run in order):${NC}
+  ${GREEN}# 1. Configure environment${NC}
+  cp .env.example .env && vi .env
+
+  ${GREEN}# 2. Provision + deploy + migrate in one shot${NC}
   ./deploy.sh init
 
-  ${GREEN}# Just deploy agent bridge to VPS:${NC}
-  ./deploy.sh agent-bridge-deploy
-  
-  ${GREEN}# Check agents on VPS:${NC}
-  ./deploy.sh agent-bridge-remote-status
-  ./deploy.sh list-agents
+  ${GREEN}# 3. Open dashboard in browser${NC}
+  ./deploy.sh tunnel   # then visit http://localhost:8080
 
-  ${GREEN}# Deploy agent bridge on a different machine:${NC}
-  # 1. Copy deploy/agent-bridge/ to target machine
-  # 2. Configure .env with CONTROL_API_URL pointing to VPS
-  # 3. Run: ./deploy.sh agent-bridge-build && ./deploy.sh agent-bridge-start
+${BLUE}Day-to-Day:${NC}
+  ${GREEN}# Push code changes to server${NC}
+  ./deploy.sh deploy
+
+  ${GREEN}# SSH into server${NC}
+  ./deploy.sh ssh
+
+  ${GREEN}# View live logs${NC}
+  ./deploy.sh logs
+
+${BLUE}Rebuild from scratch:${NC}
+  ${GREEN}# Destroy old server and start fresh${NC}
+  ./deploy.sh destroy
+  ./deploy.sh init
 
 ${YELLOW}Note:${NC} Make sure .env is configured before running any commands.
 EOF
@@ -504,6 +539,7 @@ case "${1:-help}" in
     terraform-apply)             cmd_terraform_apply ;;
     terraform-destroy)           cmd_terraform_destroy ;;
     deploy)                      cmd_ansible_deploy ;;
+    deploy-v2)                   cmd_deploy_v2 ;;
     config)                      cmd_config ;;
     api)                         cmd_api ;;
     dashboard)                   cmd_dashboard ;;

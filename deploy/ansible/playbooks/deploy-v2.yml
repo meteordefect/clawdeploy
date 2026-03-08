@@ -1,0 +1,152 @@
+---
+- hosts: control_plane
+  tasks:
+    - name: Clean up corrupted Docker repo configurations
+      shell: |
+        rm -f /etc/apt/sources.list.d/docker.list
+        rm -f /etc/apt/sources.list.d/download_docker_com_linux_ubuntu*.list
+        # Also check for any docker entries in main sources.list
+        sed -i '/download.docker.com/d' /etc/apt/sources.list || true
+
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
+
+    - name: Add Docker apt repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list
+      register: docker_repo_added
+
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Ensure deploy directory exists
+      file:
+        path: /opt/clawdeploy
+        state: directory
+        mode: '0755'
+
+    - name: Stop old v1 stack if running
+      command: docker compose down --remove-orphans
+      args:
+        chdir: /opt/clawdeploy
+      ignore_errors: yes
+
+    - name: Sync project files from repo root
+      synchronize:
+        src: "{{ playbook_dir }}/../../../"
+        dest: /opt/clawdeploy/
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=deploy/control-api"
+          - "--exclude=deploy/agent-bridge"
+          - "--exclude=deploy/dashboard"
+          - "--exclude=openclaw-source"
+          - "--exclude=openclaw"
+          - "--exclude=docs"
+          - "--exclude=*.pyc"
+          - "--exclude=__pycache__"
+
+    - name: Generate random PostgreSQL password
+      shell: openssl rand -base64 32 | tr -d "=+/" | cut -c1-32
+      register: postgres_password
+      when: not ansible_check_mode
+
+    - name: Generate environment file with required variables
+      copy:
+        dest: /opt/clawdeploy/.env
+        content: |
+          # ZhipuAI (GLM)
+          ZHIPU_API_KEY={{ lookup('env', 'ZHIPU_API_KEY') | default(zhipu_api_key | default(''), true) }}
+          GLM_MODEL={{ lookup('env', 'GLM_MODEL') | default('glm-4.7-flash', true) }}
+
+          # Moonshot (Kimi)
+          MOONSHOT_API_KEY={{ lookup('env', 'MOONSHOT_API_KEY') | default(moonshot_api_key | default(''), true) }}
+          KIMI_MODEL={{ lookup('env', 'KIMI_MODEL') | default('kimi-k2.5', true) }}
+          DEFAULT_MODEL={{ lookup('env', 'DEFAULT_MODEL') | default('kimi-k2.5', true) }}
+          FALLBACK_LLM=moonshot
+
+          # Inflection Pi (optional)
+          PI_API_KEY={{ lookup('env', 'PI_API_KEY') | default(pi_api_key | default(''), true) }}
+          PI_API_URL=https://api.inflection.ai/v1/chat/completions
+          PI_MODEL=inflection_3_pi
+
+          # Anthropic Claude (optional)
+          ANTHROPIC_API_KEY={{ lookup('env', 'ANTHROPIC_API_KEY') | default(anthropic_api_key | default(''), true) }}
+          ANTHROPIC_MODEL=claude-sonnet-4-20250514
+
+          # GitHub
+          GITHUB_TOKEN={{ lookup('env', 'GITHUB_TOKEN') | default(github_token | default(''), true) }}
+
+          # Sub-agent
+          SUBAGENT_IMAGE=clawdeploy/subagent:latest
+          SUBAGENT_MEMORY_LIMIT=4g
+          SUBAGENT_CPUS=2
+          MAX_CONCURRENT_SUBAGENTS=3
+
+          # API
+          API_HOST=0.0.0.0
+          API_PORT=8000
+        mode: '0600'
+
+    - name: Build and start v2 services
+      command: docker compose up -d --build
+      args:
+        chdir: /opt/clawdeploy
+
+    - name: Build sub-agent image
+      command: docker build -t clawdeploy/subagent:latest ./subagent
+      args:
+        chdir: /opt/clawdeploy
+
+    - name: Install hourly cron - wake Pi
+      cron:
+        name: "ClawDeploy hourly: wake Pi"
+        minute: "0"
+        hour: "*"
+        job: "docker exec clawdeploy-api python cron_handler.py >> /var/log/clawdeploy-cron.log 2>&1"
+
+    - name: Install daily cron - housekeeping
+      cron:
+        name: "ClawDeploy daily: housekeeping"
+        minute: "0"
+        hour: "2"
+        job: "docker exec clawdeploy-api python housekeeping.py >> /var/log/clawdeploy-housekeeping.log 2>&1"
+
+    - name: Verify services are running
+      command: docker compose ps
+      args:
+        chdir: /opt/clawdeploy
+      register: docker_ps
+
+    - name: Show service status
+      debug:
+        var: docker_ps.stdout_lines
