@@ -1,25 +1,36 @@
-# ClawDeploy v2
+# ClawDeploy v3
 
-**AI agent orchestration platform. Talk to Phoung (your PM). She queues tasks, spawns coding sub-agents, and surfaces PRs for your review.**
+**AI agent orchestration platform built on [pi-mono](https://github.com/badlogic/pi-mono). Talk to Phoung (your PM). She queues tasks, spawns coding sub-agents, and surfaces PRs for your review.**
 
 ---
 
-## What It Does
+## Why Pi-Mono
 
-You chat with **Phoung** — a persistent AI project manager who knows your business, your projects, and your history. When you assign a task, Phoung spins up a Docker sub-agent (Claude Code, Codex, etc.) that clones your repo, writes the code, pushes a branch, and opens a PR. You come back to the Review UI and merge or reject.
+ClawDeploy v2 used raw HTTP calls to LLM APIs and parsed XML action tags from responses. v3 replaces all of that with the [Pi coding agent SDK](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent):
+
+- **Phoung** is a pi-mono agent session with custom tools. No XML parsing — the LLM calls `spawn_subagent`, `update_task`, `check_prs` etc. as native tool calls.
+- **Sub-agents** are full pi-mono instances running in Docker containers (`pi -p`). They get branching sessions, built-in file tools, and multi-provider LLM support.
+- **Multi-provider LLM** is handled by pi-mono's unified API. Kimi For Coding, ZAI (GLM), Anthropic — all work through the same interface, no custom dispatch code.
+- **Memory files** accumulate over time. Phoung reads them for long-term context about why you're building what you're building.
+
+---
+
+## How It Works
 
 ```
-You (chat)
+You (chat via Review UI)
     │
     ▼
-Phoung — main agent (Kimi K2.5 / GLM 4.7)
-    │  Reads/writes .md memory files
-    │  Knows all your projects
-    │  Queues tasks, spawns sub-agents
+Phoung — pi-mono agent session (Kimi / ZAI / Anthropic)
+    │  Built-in tools: read, write, edit, bash
+    │  Custom tools: spawn_subagent, list_tasks, update_task, check_prs, create_memory, ask_human
+    │  Reads memory/ for long-term project context
+    │  Sessions stored as JSONL with branching + compaction
     │
     ▼
-Sub-Agent (Docker container)
-    │  Clones repo → writes code → pushes branch → opens PR
+Sub-Agent (Docker container running `pi -p`)
+    │  Clones repo → creates branch → writes code → pushes → opens PR
+    │  Full pi-mono coding agent with file tools
     │
     ▼
 GitHub PR ← You review and merge in the Review UI
@@ -29,20 +40,20 @@ GitHub PR ← You review and merge in the Review UI
 
 ## Architecture
 
-**3 Docker containers:**
+**3 Docker containers + on-demand sub-agents:**
 
 | Container | What | Port |
 |-----------|------|------|
-| `clawdeploy-api` | Python FastAPI — Phoung's brain + API for the UI | 8000 (internal) |
+| `clawdeploy-api` | Node.js/Express — pi-mono SDK + API for the UI | 8000 (internal) |
 | `clawdeploy-ui` | React Review UI — chat, tasks, logs | 3000 (internal) |
 | `clawdeploy-nginx` | Reverse proxy | 8080 |
 
-**No database.** All state lives in `.md` files in `memory/`.
+**No database.** All state lives in markdown files in `memory/` and pi-mono session files.
 
-**Sub-agents** are spawned on-demand as Docker containers. They run, push a PR, and exit.
+**Sub-agents** are spawned on-demand as Docker containers. They run the pi coding agent CLI, push a PR, and exit.
 
-**Two cron jobs** run on the server:
-- Hourly: wakes Phoung to process the task queue
+**Cron jobs** run on the server:
+- Hourly: wakes Phoung to process the task queue and check container status
 - Daily at 2am: housekeeping (organise conversations, rename memory files)
 
 ---
@@ -54,6 +65,7 @@ memory/
 ├── system-prompt.md          ← Phoung's identity, rules, and behaviour
 ├── subagent-prompt.md        ← Sub-agent identity template (injected at spawn)
 ├── overview.md               ← All projects: status, stack, repo, folder
+├── sessions/                 ← Pi-mono session files (JSONL, auto-managed)
 ├── conversations/
 │   └── inbox/                ← New chats land here; daily cron sorts them
 ├── projects/
@@ -62,14 +74,16 @@ memory/
 │       ├── memories/         ← Decisions, lessons, technical notes
 │       ├── conversations/    ← Sorted conversation history
 │       └── tasks/
-│           ├── active/       ← Live tasks (.md files with frontmatter)
+│           ├── active/       ← Live tasks (.md files with YAML frontmatter)
 │           └── completed/
 └── general/
     ├── memories/             ← Cross-project preferences and notes
     └── conversations/
 ```
 
-Phoung loads only what's needed: system prompt + overview always, then the relevant project's context and memories for that conversation.
+Memory files build up over time — they are long-term institutional knowledge. Phoung loads the system prompt + overview always, then the relevant project's context and memories for each conversation.
+
+Pi-mono sessions (JSONL) store per-conversation history with full tool call traces, branching, and automatic compaction.
 
 ---
 
@@ -78,34 +92,35 @@ Phoung loads only what's needed: system prompt + overview always, then the relev
 ```
 clawdeploy/
 ├── main-agent/
-│   ├── agent.py              # Core agent loop — parses actions, dispatches
-│   ├── pi_client.py          # LLM API client (Kimi K2.5, GLM, Claude, Pi)
-│   ├── spawner.py            # Docker sub-agent launcher
-│   ├── memory.py             # .md file read/write, activity logs
-│   ├── github_client.py      # GitHub API (PRs, merge, status)
-│   ├── housekeeping.py       # Daily cron: sort conversations, collect agent logs
-│   ├── cron_handler.py       # Hourly cron: wake Phoung
-│   ├── api.py                # FastAPI — serves tasks, chat, logs, models
-│   ├── config.py             # Settings and API keys
-│   └── requirements.txt
+│   ├── src/
+│   │   ├── index.ts          # Entry point
+│   │   ├── server.ts         # Express API — tasks, chat, logs, models
+│   │   ├── phoung.ts         # Pi-mono SDK session management
+│   │   ├── extension.ts      # Custom tools: spawn_subagent, task mgmt, GitHub
+│   │   ├── memory.ts         # Markdown file read/write, activity logs
+│   │   ├── spawner.ts        # Docker sub-agent launcher (dockerode)
+│   │   ├── github.ts         # GitHub API via @octokit/rest
+│   │   ├── cron.ts           # Cron: container checks + Phoung wake-up
+│   │   └── config.ts         # Environment config
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── Dockerfile
 ├── subagent/
-│   ├── Dockerfile            # Sub-agent container image
-│   └── entrypoint.sh         # Clone → branch → run agent → PR
+│   ├── Dockerfile            # Pi coding agent + Claude Code + GitHub CLI
+│   └── entrypoint.sh         # Clone → branch → pi -p → commit → PR
 ├── review-ui/
 │   └── src/
-│       ├── App.tsx            # Main layout, tabs
-│       ├── ChatView.tsx       # Chat with Phoung, model switcher, history
-│       ├── TasksView.tsx      # Task cards with activity timeline
-│       └── LogsView.tsx       # Container log viewer
+│       ├── App.tsx            # 3-panel layout: sidebar, main content, context
+│       ├── ChatView.tsx       # Chat with Phoung, model switcher
+│       ├── Sidebar.tsx        # Tasks + conversation navigation
+│       ├── TaskDetailView.tsx # Task detail with activity timeline
+│       ├── ContextPanel.tsx   # PR file changes + CI checks
+│       ├── LogsDrawer.tsx     # Collapsible container log viewer
+│       └── MessageCard.tsx    # Rich chat messages with inline tool actions
 ├── memory/                   # All persistent state (git-tracked)
-├── deploy/
-│   ├── deploy.sh             # Deploy script
-│   └── ansible/
-│       └── playbooks/
-│           └── deploy-v2.yml # Single Ansible playbook
 ├── docker-compose.yml
 ├── nginx.conf
-└── .env                      # API keys and config (see below)
+└── .env                      # API keys and config
 ```
 
 ---
@@ -114,35 +129,36 @@ clawdeploy/
 
 ### Prerequisites
 
-- Hetzner VPS (or any Linux server with Docker)
+- Linux server with Docker (Hetzner CX22 or similar)
 - SSH key configured
-- Ansible ≥ 2.15 on your local machine
+- Ansible >= 2.15 on your local machine
 - API keys (see below)
 
 ### Configuration
 
-Copy and fill in your `.env` at the repo root:
+Create `.env` at the repo root:
 
 ```env
-# Primary LLM: Kimi K2.5 (Moonshot AI)
-MOONSHOT_API_KEY=sk-...
-KIMI_MODEL=kimi-k2.5
-DEFAULT_MODEL=kimi-k2.5
+# Primary LLM: Kimi For Coding (Moonshot AI)
+# Pi coding agent uses KIMI_API_KEY for the kimi-coding provider
+KIMI_API_KEY=sk-...
 
-# Secondary LLM: GLM 4.7 (ZhipuAI)
-ZHIPU_API_KEY=...
-GLM_MODEL=glm-4.7-flash
+# Secondary LLM: ZAI (ZhipuAI / GLM)
+# Pi coding agent uses ZAI_API_KEY for the zai provider
+ZAI_API_KEY=...
 
-# Optional LLMs
-PI_API_KEY=
+# Optional: Anthropic
 ANTHROPIC_API_KEY=
 
-# GitHub (required for sub-agents to push branches and open PRs)
-# Use a fine-grained PAT scoped to your target repos
-# Permissions needed: Contents (Read/Write), Pull requests (Read/Write)
+# Default model (pi-mono provider/model format, leave empty for auto-select)
+DEFAULT_MODEL=
+
+# GitHub — fine-grained PAT scoped to your target repos
+# Permissions: Contents (Read/Write), Pull requests (Read/Write)
 GITHUB_TOKEN=github_pat_...
 
 # Sub-agent settings
+SUBAGENT_MODEL=            # e.g. kimi-coding/kimi-k2.5, zai/glm-4, anthropic/claude-sonnet-4-20250514
 MAX_CONCURRENT_SUBAGENTS=3
 SUBAGENT_IMAGE=clawdeploy/subagent:latest
 SUBAGENT_MEMORY_LIMIT=4g
@@ -150,8 +166,8 @@ SUBAGENT_CPUS=2
 ```
 
 Get API keys:
-- **Kimi K2.5**: [platform.moonshot.cn](https://platform.moonshot.cn)
-- **GLM 4.7**: [open.bigmodel.cn](https://open.bigmodel.cn)
+- **Kimi For Coding**: [platform.moonshot.cn](https://platform.moonshot.cn)
+- **ZAI (GLM)**: [open.bigmodel.cn](https://open.bigmodel.cn)
 - **GitHub PAT**: [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
 
 ### Deploy
@@ -164,13 +180,28 @@ cd deploy
 
 ### Access
 
-Open an SSH tunnel to the server:
-
 ```bash
 ./deploy.sh tunnel
 ```
 
-Then open `http://localhost:8080` in your browser.
+Then open `http://localhost:8080`.
+
+---
+
+## Phoung's Custom Tools
+
+These are registered as pi-mono custom tools. The LLM calls them as native tool calls — no XML parsing.
+
+| Tool | Description |
+|------|-------------|
+| `spawn_subagent` | Spawn a pi coding agent in Docker to execute a coding task |
+| `list_tasks` | List all active tasks across projects |
+| `update_task` | Update task status or metadata |
+| `ask_human` | Flag a task as needing human input |
+| `check_prs` | Check open PRs for a project's repository |
+| `create_memory` | Create a persistent memory file for long-term knowledge |
+
+Phoung also has pi-mono's built-in tools (`read`, `write`, `edit`, `bash`) for direct file and system operations.
 
 ---
 
@@ -182,9 +213,7 @@ pending → coding → pr_open → ready_to_merge → [you merge]
                            ↘ failed
 ```
 
-Each task is a `.md` file in `memory/projects/<project>/tasks/active/` with frontmatter tracking status, container ID, branch, and PR number.
-
-When a sub-agent finishes, its logs are captured to `<task-id>-run-<N>.log` and an activity timeline is written to `<task-id>-activity.jsonl`. You can view both in the Tasks tab of the Review UI.
+Each task is a `.md` file with YAML frontmatter tracking status, container ID, branch, and PR number. Activity is logged to `<task-id>-activity.jsonl`. Sub-agent output is saved to `<task-id>-run-<N>.log`.
 
 ---
 
@@ -199,27 +228,15 @@ When a sub-agent finishes, its logs are captured to `<task-id>-run-<N>.log` and 
 | `POST` | `/tasks/{id}/reject` | Close the task's PR |
 | `GET` | `/tasks/{id}/activity` | Full activity timeline |
 | `GET` | `/tasks/{id}/runs/{n}/log` | Sub-agent output for run N |
+| `GET` | `/tasks/{id}/pr-info` | PR file changes and CI checks |
 | `POST` | `/chat` | Send message to Phoung |
 | `GET` | `/conversations` | List all conversations |
 | `GET` | `/conversations/{id}` | Load conversation history |
 | `POST` | `/conversations/new` | Start a new conversation |
-| `GET` | `/models` | Available LLM models |
+| `GET` | `/models` | Available LLM models (from pi-mono) |
 | `GET` | `/projects` | List projects from memory |
 | `GET` | `/logs/{service}` | Container logs (api/ui/nginx) |
-
----
-
-## Models
-
-Phoung supports multiple LLMs. The active model is selected in the chat UI. The server default is set by `DEFAULT_MODEL` in `.env`.
-
-| Model | Provider | ID | Best for |
-|-------|----------|----|----------|
-| Kimi K2.5 | Moonshot AI | `kimi-k2.5` | Default — strong reasoning, good instruction following |
-| GLM 4.7 | ZhipuAI | `glm-4.7-flash` | Fast, cheap, good for routing |
-| Claude | Anthropic | `claude-sonnet-4-...` | Optional |
-
-Sub-agents use Claude Code or Codex — set by `AGENT_TYPE` when spawning.
+| `POST` | `/cron/wake` | Trigger cron cycle |
 
 ---
 
@@ -229,7 +246,7 @@ Sub-agents use Claude Code or Codex — set by `AGENT_TYPE` when spawning.
 - **Sub-agents**: isolated Docker containers, resource-limited (`--memory=4g --cpus=2`)
 - **GitHub**: fine-grained PAT scoped to specific repos
 - **Phoung never merges**: only you merge, via the UI or GitHub directly
-- **Action allowlist**: enforced in code — Phoung can only execute actions from `ALLOWED_ACTIONS`
+- **Tool allowlist**: enforced by pi-mono — Phoung can only use registered custom tools + built-in file tools
 
 ---
 
@@ -238,11 +255,10 @@ Sub-agents use Claude Code or Codex — set by `AGENT_TYPE` when spawning.
 | Item | Est. Cost |
 |------|-----------|
 | Hetzner CX22 (4 GB RAM) | ~$6.50/month |
-| Kimi K2.5 (active use) | ~$5–20/month |
-| GLM 4.7-flash (routing) | ~$1–3/month |
+| LLM API usage (active use) | ~$5–20/month |
 
 ---
 
-**Maintainer**: Marten — Friend Labs  
-**Version**: 2.0  
-**Stack**: Python 3.12, FastAPI, React, Vite, Tailwind, Docker, Ansible
+**Maintainer**: Marten — Friend Labs
+**Version**: 3.0
+**Stack**: TypeScript, Pi-mono SDK, Express, React, Vite, Tailwind, Docker, Ansible
