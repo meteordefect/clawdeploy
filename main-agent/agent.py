@@ -90,7 +90,8 @@ def handle_message(user_message: str, conversation_id: str = None, model: str = 
                 "type": "phoung_note",
                 "message": f"Spawning sub-agent for: {action.body[:120]}",
             })
-            spawner.spawn(task_id, project_name, action.body)
+            agent_type = action.attrs.get("agent_type", "pi")
+            spawner.spawn(task_id, project_name, action.body, agent_type=agent_type)
         elif action.type == "check_status":
             project_ctx = memory.load_project_context(action.attrs.get("project", project))
             repo_url = _extract_repo_url(project_ctx)

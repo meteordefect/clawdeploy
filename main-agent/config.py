@@ -24,7 +24,8 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 
 MAX_CONCURRENT_SUBAGENTS = int(os.getenv("MAX_CONCURRENT_SUBAGENTS", "3"))
 
-SUBAGENT_IMAGE = os.getenv("SUBAGENT_IMAGE", "devopstasks/subagent:latest")
+SUBAGENT_IMAGE = os.getenv("SUBAGENT_IMAGE", "clawdeploy/subagent:latest")
+SUBAGENT_MODEL = os.getenv("SUBAGENT_MODEL", "")
 SUBAGENT_MEMORY_LIMIT = os.getenv("SUBAGENT_MEMORY_LIMIT", "4g")
 SUBAGENT_CPUS = os.getenv("SUBAGENT_CPUS", "2")
 

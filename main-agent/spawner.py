@@ -4,9 +4,12 @@ from config import (
     ANTHROPIC_API_KEY,
     GITHUB_TOKEN,
     MAX_CONCURRENT_SUBAGENTS,
+    MOONSHOT_API_KEY,
     SUBAGENT_CPUS,
     SUBAGENT_IMAGE,
     SUBAGENT_MEMORY_LIMIT,
+    SUBAGENT_MODEL,
+    ZHIPU_API_KEY,
 )
 import memory
 
@@ -72,7 +75,7 @@ def _next_run(task_id: str) -> int:
     return max(runs, default=0) + 1
 
 
-def spawn(task_id: str, project: str, prompt: str, agent_type: str = "claude"):
+def spawn(task_id: str, project: str, prompt: str, agent_type: str = "pi"):
     if _count_running() >= MAX_CONCURRENT_SUBAGENTS:
         memory.log(f"Cannot spawn subagent for {task_id}: at max capacity ({MAX_CONCURRENT_SUBAGENTS})")
         memory.update_task(task_id, status="queued", note="Waiting for subagent slot")
@@ -104,7 +107,10 @@ def spawn(task_id: str, project: str, prompt: str, agent_type: str = "claude"):
             detach=True,
             environment={
                 "GITHUB_TOKEN": GITHUB_TOKEN,
+                "KIMI_API_KEY": MOONSHOT_API_KEY,
+                "ZAI_API_KEY": ZHIPU_API_KEY,
                 "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
+                "SUBAGENT_MODEL": SUBAGENT_MODEL,
                 "TASK_ID": task_id,
                 "BRANCH": branch,
                 "PROMPT": full_prompt,
