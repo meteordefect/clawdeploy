@@ -96,17 +96,31 @@ app.get("/tasks/:taskId/pr-info", async (req, res) => {
   }
 });
 
-// --- Chat ---
+// --- Chat (SSE streaming) ---
 
 app.post("/chat", async (req, res) => {
+  const { message, conversation_id, model } = req.body;
+  const convId = conversation_id || memory.createConversation();
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  const send = (event: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+
   try {
-    const { message, conversation_id, model } = req.body;
-    const convId = conversation_id || memory.createConversation();
-    const response = await phoung.chat(message, convId, model || undefined);
-    res.json({ response, conversation_id: convId });
+    await phoung.chatStream(message, convId, send, model || undefined);
+    send({ type: "done", conversation_id: convId });
   } catch (e: unknown) {
-    res.status(500).json({ detail: e instanceof Error ? e.message : String(e) });
+    send({ type: "error", message: e instanceof Error ? e.message : String(e) });
   }
+
+  res.end();
 });
 
 // --- Conversations ---

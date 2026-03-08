@@ -6,11 +6,19 @@ import {
   ModelRegistry,
   SettingsManager,
   type AgentSession,
+  type AgentSessionEvent,
 } from "@mariozechner/pi-coding-agent";
 import { MEMORY_DIR, KIMI_API_KEY, ZAI_API_KEY, ANTHROPIC_API_KEY } from "./config.js";
 import { allTools } from "./extension.js";
 import * as memory from "./memory.js";
 import { join } from "node:path";
+
+export interface StreamEvent {
+  type: string;
+  [key: string]: unknown;
+}
+
+export type StreamEventCallback = (event: StreamEvent) => void;
 
 const SESSION_DIR = join(MEMORY_DIR, "sessions");
 
@@ -67,7 +75,91 @@ async function createSession(conversationId: string): Promise<AgentSession> {
   return session;
 }
 
-export async function chat(userMessage: string, conversationId: string, model?: string): Promise<string> {
+function formatToolResult(result: unknown): string {
+  if (!result) return "";
+  if (typeof result === "string") return result;
+  if (typeof result === "object" && result !== null && "content" in result) {
+    const r = result as { content: { text?: string }[] };
+    return r.content.map(c => c.text || "").join("\n");
+  }
+  return JSON.stringify(result, null, 2);
+}
+
+function mapSessionEvent(event: AgentSessionEvent, onEvent: StreamEventCallback, responseRef: { text: string }) {
+  switch (event.type) {
+    case "turn_start":
+      onEvent({ type: "turn_start" });
+      break;
+    case "turn_end":
+      onEvent({ type: "turn_end" });
+      break;
+    case "message_update": {
+      const ame = event.assistantMessageEvent;
+      switch (ame.type) {
+        case "text_delta":
+          responseRef.text += ame.delta;
+          onEvent({ type: "text_delta", content: ame.delta });
+          break;
+        case "thinking_start":
+          onEvent({ type: "thinking_start" });
+          break;
+        case "thinking_delta":
+          onEvent({ type: "thinking_delta", content: ame.delta });
+          break;
+        case "thinking_end":
+          onEvent({ type: "thinking_end" });
+          break;
+      }
+      break;
+    }
+    case "tool_execution_start":
+      onEvent({
+        type: "tool_start",
+        toolCallId: event.toolCallId,
+        name: event.toolName,
+        args: event.args,
+      });
+      break;
+    case "tool_execution_update":
+      onEvent({
+        type: "tool_update",
+        toolCallId: event.toolCallId,
+        name: event.toolName,
+        partialResult: formatToolResult(event.partialResult),
+      });
+      break;
+    case "tool_execution_end":
+      onEvent({
+        type: "tool_end",
+        toolCallId: event.toolCallId,
+        name: event.toolName,
+        result: formatToolResult(event.result),
+        isError: event.isError,
+      });
+      break;
+    case "auto_compaction_start":
+      onEvent({ type: "status", message: `Compacting context (${event.reason})...` });
+      break;
+    case "auto_compaction_end":
+      onEvent({ type: "status", message: event.aborted ? "Compaction aborted" : "Context compacted" });
+      break;
+    case "auto_retry_start":
+      onEvent({ type: "status", message: `Retrying (${event.attempt}/${event.maxAttempts})...` });
+      break;
+    case "auto_retry_end":
+      if (!event.success) {
+        onEvent({ type: "error", message: event.finalError || "Retry failed" });
+      }
+      break;
+  }
+}
+
+export async function chatStream(
+  userMessage: string,
+  conversationId: string,
+  onEvent: StreamEventCallback,
+  model?: string,
+): Promise<void> {
   let session = activeSessions.get(conversationId);
   if (!session) {
     session = await createSession(conversationId);
@@ -83,11 +175,9 @@ export async function chat(userMessage: string, conversationId: string, model?: 
     }
   }
 
-  let responseText = "";
+  const responseRef = { text: "" };
   const unsubscribe = session.subscribe((event) => {
-    if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
-      responseText += event.assistantMessageEvent.delta;
-    }
+    mapSessionEvent(event, onEvent, responseRef);
   });
 
   try {
@@ -96,8 +186,7 @@ export async function chat(userMessage: string, conversationId: string, model?: 
     unsubscribe();
   }
 
-  memory.appendConversation(conversationId, userMessage, responseText);
-  return responseText;
+  memory.appendConversation(conversationId, userMessage, responseRef.text);
 }
 
 export async function cronWakeUp() {

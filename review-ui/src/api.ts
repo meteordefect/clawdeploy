@@ -1,4 +1,4 @@
-import type { Task, TaskActivity, Conversation, ChatResponse, ProjectInfo, PrInfo } from './types';
+import type { Task, TaskActivity, Conversation, ChatResponse, ProjectInfo, PrInfo, StreamEvent } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -12,6 +12,50 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
   return response.json();
+}
+
+function chatStream(
+  message: string,
+  onEvent: (event: StreamEvent) => void,
+  conversationId?: string,
+  model?: string,
+) {
+  const abortController = new AbortController();
+
+  const promise = (async () => {
+    const response = await fetch(`${API_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, conversation_id: conversationId, model }),
+      signal: abortController.signal,
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.body) throw new Error('No response body');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            onEvent(JSON.parse(line.slice(6)) as StreamEvent);
+          } catch { /* skip malformed */ }
+        }
+      }
+    }
+  })();
+
+  return { promise, abort: () => abortController.abort() };
 }
 
 export const api = {
@@ -29,6 +73,7 @@ export const api = {
   },
 
   chat: {
+    stream: chatStream,
     send: (message: string, conversationId?: string, model?: string) =>
       request<ChatResponse>('/chat', {
         method: 'POST',

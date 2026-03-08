@@ -43,6 +43,41 @@ export interface ChatResponse {
   conversation_id: string;
 }
 
+// --- SSE stream event types ---
+
+export type StreamEvent =
+  | { type: 'text_delta'; content: string }
+  | { type: 'thinking_start' }
+  | { type: 'thinking_delta'; content: string }
+  | { type: 'thinking_end' }
+  | { type: 'tool_start'; toolCallId: string; name: string; args: Record<string, unknown> }
+  | { type: 'tool_update'; toolCallId: string; name: string; partialResult: string }
+  | { type: 'tool_end'; toolCallId: string; name: string; result: string; isError: boolean }
+  | { type: 'turn_start' }
+  | { type: 'turn_end' }
+  | { type: 'status'; message: string }
+  | { type: 'error'; message: string }
+  | { type: 'done'; conversation_id: string };
+
+export interface MessageBlock {
+  id: string;
+  kind: 'text' | 'thinking' | 'tool' | 'status' | 'error';
+  content: string;
+  toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  toolResult?: string;
+  isError?: boolean;
+  isComplete?: boolean;
+}
+
+export interface StreamMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  blocks: MessageBlock[];
+  timestamp: number;
+  isStreaming?: boolean;
+}
+
 export interface ProjectInfo {
   name: string;
   context_preview: string;
