@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, ChevronDown, Square } from 'lucide-react';
+import { Send, Bot, ChevronDown, Square, Brain, Minimize2, BarChart3 } from 'lucide-react';
 import { api } from './api';
 import { StreamMessageCard } from './MessageCard';
 import type { StreamMessage, MessageBlock, StreamEvent } from './types';
 
 interface ModelOption { id: string; label: string; default?: boolean; }
+
+interface ThinkingInfo { current: string; available: string[]; supported: boolean; }
+
+interface SessionStats {
+  userMessages: number;
+  assistantMessages: number;
+  toolCalls: number;
+  totalMessages: number;
+  tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
+  cost: number;
+  context: { tokens: number | null; contextWindow: number; percent: number | null } | null;
+}
 
 interface ChatViewProps {
   initialConversationId: string | null;
@@ -14,6 +26,12 @@ interface ChatViewProps {
 let blockCounter = 0;
 function nextBlockId() { return `blk-${++blockCounter}`; }
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
 export function ChatView({ initialConversationId, onConversationCreated }: ChatViewProps) {
   const [messages, setMessages] = useState<StreamMessage[]>([]);
   const [input, setInput] = useState('');
@@ -22,6 +40,10 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
   const [models, setModels] = useState<ModelOption[]>([]);
   const [activeModel, setActiveModel] = useState<string>('');
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [thinking, setThinking] = useState<ThinkingInfo>({ current: 'off', available: [], supported: false });
+  const [showThinkingPicker, setShowThinkingPicker] = useState(false);
+  const [stats, setStats] = useState<SessionStats | null>(null);
+  const [compacting, setCompacting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
@@ -36,6 +58,11 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
         setActiveModel(def.id);
       }
     }).catch(() => {});
+  }, []);
+
+  const refreshSessionInfo = useCallback((convId: string) => {
+    api.session.thinking(convId).then(setThinking).catch(() => {});
+    api.session.stats(convId).then(s => { if (s) setStats(s); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -168,10 +195,11 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
         break;
       }
       case 'done': {
-        if (event.conversation_id) {
-          const convId = event.conversation_id as string;
+        const convId = event.conversation_id as string | undefined;
+        if (convId) {
           setConversationId(convId);
           onConversationCreated(convId);
+          refreshSessionInfo(convId);
         }
         setMessages(prev => {
           const updated = [...prev];
@@ -263,8 +291,73 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
     }
   };
 
+  const handleThinkingChange = async (level: string) => {
+    if (!conversationId) return;
+    setShowThinkingPicker(false);
+    const result = await api.session.setThinking(conversationId, level).catch(() => null);
+    if (result) setThinking(prev => ({ ...prev, current: result.current, supported: result.supported }));
+  };
+
+  const handleCompact = async () => {
+    if (!conversationId || compacting) return;
+    setCompacting(true);
+    try {
+      await api.session.compact(conversationId);
+      refreshSessionInfo(conversationId);
+    } catch { /* ignore */ }
+    setCompacting(false);
+  };
+
+  const thinkingLabel = thinking.current === 'off' ? 'Off' : thinking.current.charAt(0).toUpperCase() + thinking.current.slice(1);
+  const contextPercent = stats?.context?.percent;
+
   return (
     <div className="flex flex-col h-full">
+      {/* Stats bar */}
+      {stats && (
+        <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border bg-subtle text-[10px] text-tertiary flex-shrink-0">
+          <div className="flex items-center gap-1">
+            <BarChart3 size={10} />
+            <span>{stats.totalMessages} msgs</span>
+          </div>
+          <span>·</span>
+          <span>{formatTokens(stats.tokens.total)} tokens</span>
+          {stats.cost > 0 && (
+            <>
+              <span>·</span>
+              <span>${stats.cost.toFixed(4)}</span>
+            </>
+          )}
+          {contextPercent != null && (
+            <>
+              <span>·</span>
+              <div className="flex items-center gap-1.5">
+                <span>ctx {contextPercent}%</span>
+                <div className="w-16 h-1 bg-border rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      contextPercent > 80 ? 'bg-red-400' : contextPercent > 60 ? 'bg-amber-400' : 'bg-green-400'
+                    }`}
+                    style={{ width: `${Math.min(contextPercent, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+          {contextPercent != null && contextPercent > 60 && (
+            <button
+              onClick={handleCompact}
+              disabled={compacting || streaming}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-amber-400 hover:bg-amber-400/10 disabled:opacity-40 transition-colors"
+              title="Compact context to free up token space"
+            >
+              <Minimize2 size={9} />
+              {compacting ? 'Compacting...' : 'Compact'}
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -283,6 +376,7 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
 
       <div className="border-t border-border p-3 flex-shrink-0 bg-card">
         <div className="flex gap-2 items-end">
+          {/* Model picker */}
           {models.length > 0 && (
             <div className="relative flex-shrink-0">
               <button
@@ -294,7 +388,7 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
                 <ChevronDown size={10} />
               </button>
               {showModelPicker && (
-                <div className="absolute left-0 bottom-full mb-1 w-44 bg-card border border-border rounded-xl shadow-card z-50 overflow-hidden">
+                <div className="absolute left-0 bottom-full mb-1 w-44 bg-card border border-border rounded-xl shadow-card z-50 overflow-hidden max-h-60 overflow-y-auto">
                   {models.map(m => (
                     <button
                       key={m.id}
@@ -313,6 +407,40 @@ export function ChatView({ initialConversationId, onConversationCreated }: ChatV
               )}
             </div>
           )}
+
+          {/* Thinking level picker */}
+          {thinking.supported && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowThinkingPicker(p => !p)}
+                className="flex items-center gap-1.5 px-2.5 py-2.5 text-[11px] font-medium text-tertiary hover:text-secondary bg-subtle border border-border rounded-lg transition-colors"
+                title="Thinking level"
+              >
+                <Brain size={11} className={thinking.current !== 'off' ? 'text-violet-400' : ''} />
+                <span>{thinkingLabel}</span>
+                <ChevronDown size={10} />
+              </button>
+              {showThinkingPicker && (
+                <div className="absolute left-0 bottom-full mb-1 w-32 bg-card border border-border rounded-xl shadow-card z-50 overflow-hidden">
+                  {thinking.available.map(level => (
+                    <button
+                      key={level}
+                      onClick={() => handleThinkingChange(level)}
+                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                        level === thinking.current
+                          ? 'bg-violet-400/15 text-violet-300'
+                          : 'text-secondary hover:bg-subtle hover:text-primary'
+                      }`}
+                    >
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                      {level === thinking.current && <span className="float-right text-violet-300">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={input}

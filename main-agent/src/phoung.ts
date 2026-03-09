@@ -109,6 +109,23 @@ function mapSessionEvent(event: AgentSessionEvent, onEvent: StreamEventCallback,
         case "thinking_end":
           onEvent({ type: "thinking_end" });
           break;
+        case "done":
+          break;
+        case "error":
+          onEvent({
+            type: "error",
+            message: ame.error?.errorMessage || `LLM error: ${ame.reason}`,
+          });
+          break;
+      }
+      break;
+    }
+    case "agent_end": {
+      const state = event.messages;
+      const lastMsg = state[state.length - 1];
+      if (lastMsg && "stopReason" in lastMsg && lastMsg.stopReason === "error") {
+        const errMsg = "errorMessage" in lastMsg ? (lastMsg as any).errorMessage : "Unknown LLM error";
+        onEvent({ type: "error", message: errMsg });
       }
       break;
     }
@@ -226,4 +243,51 @@ export function disposeSession(conversationId: string) {
     session.dispose();
     activeSessions.delete(conversationId);
   }
+}
+
+export function getThinkingInfo(conversationId: string) {
+  const session = activeSessions.get(conversationId);
+  if (!session) return { current: "off" as const, available: [] as string[], supported: false };
+  return {
+    current: session.thinkingLevel,
+    available: session.getAvailableThinkingLevels(),
+    supported: session.supportsThinking(),
+  };
+}
+
+export function setThinkingLevel(conversationId: string, level: string) {
+  const session = activeSessions.get(conversationId);
+  if (!session) return { current: "off", supported: false };
+  session.setThinkingLevel(level as any);
+  return { current: session.thinkingLevel, supported: session.supportsThinking() };
+}
+
+export async function compactSession(conversationId: string) {
+  const session = activeSessions.get(conversationId);
+  if (!session) return { error: "No active session" };
+  const result = await session.compact();
+  return {
+    tokensBefore: result.tokensBefore,
+    summary: result.summary.slice(0, 200),
+  };
+}
+
+export function getSessionStats(conversationId: string) {
+  const session = activeSessions.get(conversationId);
+  if (!session) return null;
+  const stats = session.getSessionStats();
+  const context = session.getContextUsage();
+  return {
+    userMessages: stats.userMessages,
+    assistantMessages: stats.assistantMessages,
+    toolCalls: stats.toolCalls,
+    totalMessages: stats.totalMessages,
+    tokens: stats.tokens,
+    cost: stats.cost,
+    context: context ? {
+      tokens: context.tokens,
+      contextWindow: context.contextWindow,
+      percent: context.percent,
+    } : null,
+  };
 }

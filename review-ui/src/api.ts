@@ -83,6 +83,33 @@ export const api = {
     models: () => request<{ id: string; label: string; default: boolean }[]>('/models'),
   },
 
+  session: {
+    thinking: (conversationId: string) =>
+      request<{ current: string; available: string[]; supported: boolean }>(
+        `/session/thinking?conversation_id=${encodeURIComponent(conversationId)}`
+      ),
+    setThinking: (conversationId: string, level: string) =>
+      request<{ current: string; supported: boolean }>('/session/thinking', {
+        method: 'POST',
+        body: JSON.stringify({ conversation_id: conversationId, level }),
+      }),
+    compact: (conversationId: string) =>
+      request<{ tokensBefore: number; summary: string }>('/session/compact', {
+        method: 'POST',
+        body: JSON.stringify({ conversation_id: conversationId }),
+      }),
+    stats: (conversationId: string) =>
+      request<{
+        userMessages: number;
+        assistantMessages: number;
+        toolCalls: number;
+        totalMessages: number;
+        tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
+        cost: number;
+        context: { tokens: number | null; contextWindow: number; percent: number | null } | null;
+      } | null>(`/session/stats?conversation_id=${encodeURIComponent(conversationId)}`),
+  },
+
   conversations: {
     list: () => request<Conversation[]>('/conversations'),
     get: (convId: string) => request<{ id: string; content: string }>(`/conversations/${convId}`),

@@ -191,6 +191,39 @@ app.get("/logs/:service", async (req, res) => {
   }
 });
 
+// --- Session controls ---
+
+app.get("/session/thinking", (req, res) => {
+  const convId = req.query.conversation_id as string;
+  if (!convId) return res.status(400).json({ detail: "conversation_id required" });
+  res.json(phoung.getThinkingInfo(convId));
+});
+
+app.post("/session/thinking", (req, res) => {
+  const { conversation_id, level } = req.body;
+  if (!conversation_id) return res.status(400).json({ detail: "conversation_id required" });
+  res.json(phoung.setThinkingLevel(conversation_id, level));
+});
+
+app.post("/session/compact", async (req, res) => {
+  const { conversation_id } = req.body;
+  if (!conversation_id) return res.status(400).json({ detail: "conversation_id required" });
+  try {
+    const result = await phoung.compactSession(conversation_id);
+    res.json(result);
+  } catch (e: unknown) {
+    res.status(500).json({ detail: e instanceof Error ? e.message : String(e) });
+  }
+});
+
+app.get("/session/stats", (req, res) => {
+  const convId = req.query.conversation_id as string;
+  if (!convId) return res.status(400).json({ detail: "conversation_id required" });
+  const stats = phoung.getSessionStats(convId);
+  if (!stats) return res.json(null);
+  res.json(stats);
+});
+
 // --- Cron ---
 
 app.post("/cron/wake", async (_req, res) => {
