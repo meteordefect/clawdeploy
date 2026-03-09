@@ -102,9 +102,9 @@
           GITHUB_TOKEN={{ lookup('env', 'GITHUB_TOKEN') | default('', true) }}
 
           # Sub-agent
-          SUBAGENT_MODEL={{ lookup('env', 'SUBAGENT_MODEL') | default('', true) }}
+          SUBAGENT_MODEL={{ lookup('env', 'SUBAGENT_MODEL') | default('zai/glm-4', true) }}
           SUBAGENT_IMAGE=clawdeploy/subagent:latest
-          SUBAGENT_MEMORY_LIMIT=4g
+          SUBAGENT_MEMORY_LIMIT=2g
           SUBAGENT_CPUS=2
           MAX_CONCURRENT_SUBAGENTS=3
 

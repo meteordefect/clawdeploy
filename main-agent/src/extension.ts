@@ -16,17 +16,18 @@ export const spawnSubagentTool: ToolDefinition = {
     project: Type.String({ description: "Project name matching a directory in memory/projects/" }),
     prompt: Type.String({ description: "Detailed coding instructions for the sub-agent" }),
     agent_type: Type.Optional(Type.String({ description: "Agent type: pi (default), claude, or codex" })),
+    model: Type.Optional(Type.String({ description: "LLM model override for the sub-agent, e.g. zai/glm-4, kimi-coding/kimi-k2.5, anthropic/claude-sonnet-4-20250514. Defaults to SUBAGENT_MODEL env var." })),
   }),
   execute: async (_toolCallId, params) => {
-    const { task_id, project, prompt, agent_type } = params as {
-      task_id: string; project: string; prompt: string; agent_type?: string;
+    const { task_id, project, prompt, agent_type, model } = params as {
+      task_id: string; project: string; prompt: string; agent_type?: string; model?: string;
     };
     memory.createTask(task_id, project, prompt);
     memory.appendTaskActivity(task_id, {
       type: "phoung_note",
       message: `Spawning sub-agent for: ${prompt.slice(0, 120)}`,
     });
-    await spawner.spawn(task_id, project, prompt, agent_type || "pi");
+    await spawner.spawn(task_id, project, prompt, agent_type || "pi", model);
     return {
       content: [{ type: "text", text: `Sub-agent spawned for task ${task_id} in project ${project}.` }],
       details: {},

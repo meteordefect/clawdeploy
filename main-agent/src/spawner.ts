@@ -65,7 +65,7 @@ function nextRun(taskId: string): number {
   return Math.max(0, ...runs) + 1;
 }
 
-export async function spawn(taskId: string, project: string, prompt: string, agentType = "pi") {
+export async function spawn(taskId: string, project: string, prompt: string, agentType = "pi", modelOverride?: string) {
   const running = await countRunning();
   if (running >= MAX_CONCURRENT_SUBAGENTS) {
     memory.log(`Cannot spawn subagent for ${taskId}: at max capacity (${MAX_CONCURRENT_SUBAGENTS})`);
@@ -93,10 +93,10 @@ export async function spawn(taskId: string, project: string, prompt: string, age
         `KIMI_API_KEY=${KIMI_API_KEY}`,
         `ZAI_API_KEY=${ZAI_API_KEY}`,
         `ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}`,
-        `SUBAGENT_MODEL=${SUBAGENT_MODEL}`,
+        `SUBAGENT_MODEL=${modelOverride || SUBAGENT_MODEL}`,
         `TASK_ID=${taskId}`,
         `BRANCH=${branch}`,
-        `PROMPT=${fullPrompt}`,
+        `PROMPT_B64=${Buffer.from(fullPrompt).toString("base64")}`,
         `REPO_URL=${repoUrl}`,
         `AGENT_TYPE=${agentType}`,
       ],
