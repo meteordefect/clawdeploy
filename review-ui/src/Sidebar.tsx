@@ -182,14 +182,14 @@ export function Sidebar({
                     <button
                       key={task.meta.id}
                       onClick={() => onSelectTask(task.meta.id)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors ${
+                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors overflow-hidden ${
                         isActive
                           ? 'bg-accent/15 text-primary'
-                          : 'text-secondary hover:text-primary hover:bg-subtle'
+                          : 'bg-subtle/50 text-secondary hover:text-primary hover:bg-subtle'
                       }`}
                     >
                       <span className="flex-shrink-0">{STATUS_ICONS[status]}</span>
-                      <span className="flex-1 text-sm truncate">{task.meta.id}</span>
+                      <span className="flex-1 min-w-0 text-sm truncate">{task.meta.id}</span>
                       <Badge variant={status} className="text-[9px] px-1.5 py-0 flex-shrink-0">
                         {STATUS_SHORT[status]}
                       </Badge>
