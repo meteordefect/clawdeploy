@@ -1,5 +1,5 @@
 ---
-- name: Check ClawDeploy Status
+- name: Check Phoung Status
   hosts: control_plane
   become: yes
   

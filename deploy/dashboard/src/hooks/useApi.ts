@@ -3,7 +3,7 @@ import { usePolling } from './usePolling';
 import { api } from '../api/client';
 import type { Agent, Mission, Command, Event, FileItem, Session } from '../types';
 
-// Hooks for ClawDeploy API
+// Hooks for Phoung API
 
 /**
  * Hook to poll system health status

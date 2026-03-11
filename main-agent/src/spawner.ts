@@ -9,8 +9,10 @@ import {
   SUBAGENT_MODEL,
   SUBAGENT_MEMORY_LIMIT,
   SUBAGENT_CPUS,
+  SUBAGENT_RUNTIME,
 } from "./config.js";
 import * as memory from "./memory.js";
+import * as repos from "./repos.js";
 
 const docker = new Dockerode({ socketPath: "/var/run/docker.sock" });
 
@@ -32,6 +34,7 @@ export async function checkContainers(): Promise<{ taskId: string; run: number; 
     const container = docker.getContainer(info.Id);
     const taskId = info.Labels["clawdeploy.task"] || "";
     const run = parseInt(info.Labels["clawdeploy.run"] || "0", 10);
+    const project = info.Labels["clawdeploy.project"] || "";
     const status = info.State;
     let exitCode: number | null = null;
 
@@ -43,6 +46,26 @@ export async function checkContainers(): Promise<{ taskId: string; run: number; 
         const logText = logBuf.toString("utf-8");
         if (taskId && run) memory.saveAgentLog(taskId, run, logText);
       } catch {}
+
+      const branch = `task/${taskId}`;
+      if (exitCode === 0 && taskId) {
+        try {
+          if (repos.hasUncommittedChanges(taskId)) {
+            repos.commitAndPush(taskId, branch, `task(${taskId}): automated changes`);
+          }
+          repos.pushFromWorktree(taskId, branch);
+          const title = `[${taskId}] Automated changes`;
+          const body = `Automated PR from sub-agent.\n\nTask: ${taskId}`;
+          repos.createPrFromWorktree(taskId, branch, title, body);
+        } catch (e) {
+          memory.log(`Post-exit push/PR failed for ${taskId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      if (project && taskId) {
+        try { repos.removeWorktree(project, taskId); } catch {}
+      }
+
       memory.appendTaskActivity(taskId, { type: "agent_completed", run, exit_code: exitCode });
       try { await container.remove(); } catch {}
     }
@@ -65,7 +88,7 @@ function nextRun(taskId: string): number {
   return Math.max(0, ...runs) + 1;
 }
 
-export async function spawn(taskId: string, project: string, prompt: string, agentType = "pi", modelOverride?: string) {
+export async function spawn(taskId: string, project: string, prompt: string, agentType = "pi", modelOverride?: string, contextFiles?: string[]) {
   const running = await countRunning();
   if (running >= MAX_CONCURRENT_SUBAGENTS) {
     memory.log(`Cannot spawn subagent for ${taskId}: at max capacity (${MAX_CONCURRENT_SUBAGENTS})`);
@@ -81,9 +104,39 @@ export async function spawn(taskId: string, project: string, prompt: string, age
     return;
   }
 
+  if (!repos.isCloned(project)) {
+    try {
+      repos.cloneRepo(project, repoUrl);
+    } catch (e) {
+      memory.log(`Failed to clone ${repoUrl}: ${e instanceof Error ? e.message : String(e)}`);
+      memory.updateTask(taskId, { status: "failed", note: "Failed to clone repo" });
+      return;
+    }
+  }
+
+  try {
+    repos.pullLatest(project);
+  } catch (e) {
+    memory.log(`Warning: failed to pull latest for ${project}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const branch = `task/${taskId}`;
+  let wsDir: string;
+  try {
+    wsDir = repos.createWorktree(project, taskId, branch);
+  } catch (e) {
+    memory.log(`Failed to create worktree for ${taskId}: ${e instanceof Error ? e.message : String(e)}`);
+    memory.updateTask(taskId, { status: "failed", note: "Failed to create worktree" });
+    return;
+  }
+
+  repos.injectProjectMemories(project, taskId);
+  if (contextFiles && contextFiles.length > 0) {
+    repos.injectContext(taskId, contextFiles);
+  }
+
   const fullPrompt = buildFullPrompt(taskId, prompt);
   const run = nextRun(taskId);
-  const branch = `task/${taskId}`;
 
   try {
     const container = await docker.createContainer({
@@ -97,17 +150,19 @@ export async function spawn(taskId: string, project: string, prompt: string, age
         `TASK_ID=${taskId}`,
         `BRANCH=${branch}`,
         `PROMPT_B64=${Buffer.from(fullPrompt).toString("base64")}`,
-        `REPO_URL=${repoUrl}`,
         `AGENT_TYPE=${agentType}`,
       ],
       Labels: {
         "clawdeploy.type": "subagent",
         "clawdeploy.task": taskId,
         "clawdeploy.run": String(run),
+        "clawdeploy.project": project,
       },
       HostConfig: {
+        Runtime: SUBAGENT_RUNTIME,
         Memory: parseMemLimit(SUBAGENT_MEMORY_LIMIT),
         NanoCpus: Math.round(parseFloat(SUBAGENT_CPUS) * 1e9),
+        Binds: [`${wsDir}:/workspace`],
       },
     });
     await container.start();
@@ -121,11 +176,12 @@ export async function spawn(taskId: string, project: string, prompt: string, age
       agent_type: agentType,
       prompt: fullPrompt,
     });
-    memory.log(`Spawned subagent ${containerId} for task ${taskId} (run ${run})`);
+    memory.log(`Spawned subagent ${containerId} for task ${taskId} (run ${run}, runtime: ${SUBAGENT_RUNTIME})`);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     memory.log(`Failed to spawn subagent for ${taskId}: ${msg}`);
     memory.updateTask(taskId, { status: "failed", note: msg });
+    repos.removeWorktree(project, taskId);
   }
 }
 

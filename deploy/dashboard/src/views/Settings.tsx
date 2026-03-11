@@ -49,7 +49,7 @@ export function Settings() {
       <Card title="GitHub SSH Key">
         <div className="space-y-4">
           <p className="text-sm text-secondary leading-relaxed">
-            Generate an SSH key to let ClawDeploy access your GitHub repos.
+            Generate an SSH key to let Phoung access your GitHub repos.
             Copy the public key below and add it to{' '}
             <a
               href="https://github.com/settings/keys"
@@ -118,7 +118,7 @@ export function Settings() {
         <Card title="About">
           <div className="space-y-4 text-sm text-secondary">
             <p className="leading-relaxed">
-              ClawDeploy is a self-hosted control plane for managing remote OpenClaw AI agent instances.
+              Phoung is a self-hosted control plane for managing remote OpenClaw AI agent instances.
             </p>
             <p className="leading-relaxed">
               Features pull-based heartbeat architecture, PostgreSQL-backed state management,

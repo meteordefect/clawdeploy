@@ -20,7 +20,7 @@ def _get_client() -> docker.DockerClient:
 
 def _count_running() -> int:
     client = _get_client()
-    containers = client.containers.list(filters={"label": "clawdeploy.type=subagent"})
+    containers = client.containers.list(filters={"label": "phoung.type=subagent"})
     return len(containers)
 
 
@@ -28,9 +28,9 @@ def check_containers() -> list[dict]:
     """Check status of all sub-agent containers (running and exited)."""
     client = _get_client()
     results = []
-    for container in client.containers.list(all=True, filters={"label": "clawdeploy.type=subagent"}):
-        task_id = container.labels.get("clawdeploy.task", "")
-        run = int(container.labels.get("clawdeploy.run", "0"))
+    for container in client.containers.list(all=True, filters={"label": "phoung.type=subagent"}):
+        task_id = container.labels.get("phoung.task", "")
+        run = int(container.labels.get("phoung.run", "0"))
         status = container.status  # running, exited, dead, etc.
         exit_code = None
         if status == "exited":
@@ -118,9 +118,9 @@ def spawn(task_id: str, project: str, prompt: str, agent_type: str = "pi"):
                 "AGENT_TYPE": agent_type,
             },
             labels={
-                "clawdeploy.type": "subagent",
-                "clawdeploy.task": task_id,
-                "clawdeploy.run": str(run),
+                "phoung.type": "subagent",
+                "phoung.task": task_id,
+                "phoung.run": str(run),
             },
             mem_limit=SUBAGENT_MEMORY_LIMIT,
             nano_cpus=int(float(SUBAGENT_CPUS) * 1e9),

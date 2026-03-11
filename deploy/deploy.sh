@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# ClawDeploy v4 - Deployment Script
+# Phoung v4 - Deployment Script
 # Usage: ./deploy.sh [command]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -133,7 +133,7 @@ cmd_ansible_migrate() {
 
 # Combined commands
 cmd_init() {
-    log_info "Initializing ClawDeploy Control Plane from scratch..."
+    log_info "Initializing Phoung Control Plane from scratch..."
     
     check_env
     
@@ -164,7 +164,7 @@ cmd_init() {
     log_info "Step 5: Run Database Migrations"
     cmd_ansible_migrate
 
-    log_success "ClawDeploy v4 Control Plane is ready!"
+    log_success "Phoung v4 Control Plane is ready!"
     log_info "Open dashboard via SSH tunnel: ./deploy.sh tunnel"
 }
 
@@ -184,7 +184,7 @@ cmd_config() {
 cmd_api() {
     log_info "Updating Control API only..."
     cd ansible
-    ansible control_plane -m shell -a "cd /opt/clawdeploy && docker compose restart control-api"
+    ansible control_plane -m shell -a "cd /opt/phoung && docker compose restart control-api"
     cd ..
     log_success "Control API restarted"
 }
@@ -192,7 +192,7 @@ cmd_api() {
 cmd_dashboard() {
     log_info "Updating Dashboard only..."
     cd ansible
-    ansible control_plane -m shell -a "cd /opt/clawdeploy && docker compose restart dashboard"
+    ansible control_plane -m shell -a "cd /opt/phoung && docker compose restart dashboard"
     cd ..
     log_success "Dashboard restarted"
 }
@@ -208,11 +208,11 @@ cmd_nginx() {
 cmd_deploy_v2() {
     check_env
     load_env
-    log_info "Deploying ClawDeploy v2..."
+    log_info "Deploying Phoung v2..."
     cd ansible
     ansible-playbook playbooks/deploy-v2.yml
     cd ..
-    log_success "ClawDeploy v2 deployed!"
+    log_success "Phoung v2 deployed!"
     log_info "Open dashboard via SSH tunnel: ./deploy.sh tunnel"
 }
 
@@ -249,7 +249,7 @@ cmd_logs() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Fetching logs from $SERVER_IP..."
-    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f --tail=100"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/phoung && docker compose logs -f --tail=100"
 }
 
 cmd_build_openclaw() {
@@ -334,7 +334,7 @@ cmd_agent_bridge_remote_logs() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Fetching agent bridge logs from $SERVER_IP..."
-    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose logs -f agent-bridge"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/phoung && docker compose logs -f agent-bridge"
 }
 
 cmd_agent_bridge_remote_status() {
@@ -345,7 +345,7 @@ cmd_agent_bridge_remote_status() {
     
     SERVER_IP=$(grep ansible_host ansible/inventory.ini | cut -d'=' -f2)
     log_info "Checking agent bridge status on $SERVER_IP..."
-    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/clawdeploy && docker compose ps agent-bridge"
+    ssh -i ~/.ssh/friendlabs-deploy root@$SERVER_IP "cd /opt/phoung && docker compose ps agent-bridge"
 }
 
 cmd_list_agents() {
@@ -437,7 +437,7 @@ cmd_check_ssl() {
 
 cmd_help() {
     cat <<EOF
-${GREEN}ClawDeploy v4 - Deployment Tool${NC}
+${GREEN}Phoung v4 - Deployment Tool${NC}
 
 ${BLUE}Usage:${NC}
   ./deploy.sh [command]

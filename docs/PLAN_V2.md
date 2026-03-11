@@ -1,4 +1,4 @@
-# ClawDeploy v2 — Architecture Reference
+# Phoung v2 — Architecture Reference
 
 **Date:** 2026-03-06  
 **Status:** Built and deployed  
@@ -10,7 +10,7 @@
 
 ## Problem Statement
 
-ClawDeploy v1 is overengineered for what we actually need. It has 5 Docker services, ~35 API endpoints, 6 database tables, an Agent Bridge, an OpenClaw Gateway, Ansible playbooks, and multiple auth flows. Several endpoints are broken (PATCH tasks, POST activity). The Agent Bridge bypasses the gateway entirely. Most of this infrastructure exists to manage state that GitHub already tracks natively (branches, PRs, CI status, reviews).
+Phoung v1 is overengineered for what we actually need. It has 5 Docker services, ~35 API endpoints, 6 database tables, an Agent Bridge, an OpenClaw Gateway, Ansible playbooks, and multiple auth flows. Several endpoints are broken (PATCH tasks, POST activity). The Agent Bridge bypasses the gateway entirely. Most of this infrastructure exists to manage state that GitHub already tracks natively (branches, PRs, CI status, reviews).
 
 **What we actually want:** Talk to an AI that knows our business. It makes code changes in the background. We review and merge them.
 
@@ -263,7 +263,7 @@ You have a memory system in the `memory/` folder. Here's how to use it:
 ## How you output actions
 Wrap each action in a tag so the system can parse it:
 
-<action type="spawn_subagent" project="clawdeploy" task_id="task-003">
+<action type="spawn_subagent" project="phoung" task_id="task-003">
 Prompt for the sub-agent here
 </action>
 
@@ -278,7 +278,7 @@ CI failed with error X. Should I retry or skip?
 Content to append
 </action>
 
-<action type="check_status" project="clawdeploy" task_id="task-003">
+<action type="check_status" project="phoung" task_id="task-003">
 </action>
 
 <action type="create_memory" id="005" project="streaming-site" tags="gstreamer,latency,tuning" summary="Tuned GStreamer pipeline latency from 12s to 3s">
@@ -321,12 +321,12 @@ Pi never loads everything. It reads level 0 + 1, figures out which project matte
 ```markdown
 # Projects Overview
 
-## ClawDeploy
+## Phoung
 - **What:** AI agent orchestration platform
 - **Stack:** Python, React, Docker
-- **Repo:** github.com/marten/clawdeploy
+- **Repo:** github.com/marten/phoung
 - **Status:** Active — rebuilding as v2 (simplified)
-- **Folder:** projects/clawdeploy/
+- **Folder:** projects/phoung/
 
 ## StreamingSite
 - **What:** Live video streaming platform
@@ -355,7 +355,7 @@ memory/
 │   └── inbox/                           # New chats land here before daily cron sorts them
 │       └── 2026-03-06-14h30.md
 ├── projects/
-│   ├── clawdeploy/
+│   ├── phoung/
 │   │   ├── context.md                   # Level 2: full project context (architecture, tech, priorities)
 │   │   ├── memories/
 │   │   │   ├── v2-architecture-plan.md
@@ -473,7 +473,7 @@ Every chat session is saved as a `.md` file. New conversations land in `conversa
 ```markdown
 ---
 id: conv-2026-03-06-1430
-project: clawdeploy
+project: phoung
 started: 2026-03-06T14:30:00Z
 summary: null
 ---
@@ -491,9 +491,9 @@ After the daily cron processes it:
 ```markdown
 ---
 id: conv-2026-03-06-1430
-project: clawdeploy
+project: phoung
 started: 2026-03-06T14:30:00Z
-summary: Decided to rebuild ClawDeploy as v2. Kill Postgres, OpenClaw, Agent Bridge. Replace with Pi + Docker sub-agents + .md memory. Cron as dumb alarm clock.
+summary: Decided to rebuild Phoung as v2. Kill Postgres, OpenClaw, Agent Bridge. Replace with Pi + Docker sub-agents + .md memory. Cron as dumb alarm clock.
 ---
 (... conversation content ...)
 ```
@@ -503,7 +503,7 @@ summary: Decided to rebuild ClawDeploy as v2. Kill Postgres, OpenClaw, Agent Bri
 ```markdown
 ---
 id: task-005
-project: clawdeploy
+project: phoung
 status: coding
 agent_type: claude
 container_id: abc123
@@ -580,7 +580,7 @@ docker run --rm \
   -e REPO_URL=$REPO_URL \
   -e AGENT_TYPE=$AGENT_TYPE \
   -v /tmp/agent-workspaces:/workspace \
-  clawdeploy/subagent:latest
+  phoung/subagent:latest
 ```
 
 **Container image (`Dockerfile.subagent`):**
@@ -841,7 +841,7 @@ The frontend has two main views — chat and tasks — as top-level tabs.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  [Chat]  [Tasks]                              clawdeploy │
+│  [Chat]  [Tasks]                              phoung │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  (content area — switches based on active tab)           │
@@ -950,7 +950,7 @@ server {
 **Ansible — one simple playbook (`deploy.yml`):**
 
 ```yaml
-- hosts: clawdeploy
+- hosts: phoung
   tasks:
     - name: Install Docker
       apt:
@@ -960,19 +960,19 @@ server {
     - name: Copy project files
       synchronize:
         src: ../
-        dest: /opt/clawdeploy/
+        dest: /opt/phoung/
         rsync_opts: ["--exclude=.git", "--exclude=node_modules"]
 
     - name: Copy env file
       copy:
         src: ../.env
-        dest: /opt/clawdeploy/.env
+        dest: /opt/phoung/.env
         mode: "0600"
 
     - name: Build and start services
       command: docker compose up -d --build
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
 
     - name: Set up SSL
       command: certbot --nginx -d your-domain.com --non-interactive --agree-tos -m you@email.com
@@ -989,16 +989,16 @@ server {
         - name: "Hourly: wake Pi"
           minute: "0"
           hour: "*"
-          job: "docker exec clawdeploy-api-1 python cron_handler.py >> /var/log/clawdeploy-cron.log 2>&1"
+          job: "docker exec phoung-api-1 python cron_handler.py >> /var/log/phoung-cron.log 2>&1"
         - name: "Daily: housekeeping"
           minute: "0"
           hour: "2"
-          job: "docker exec clawdeploy-api-1 python housekeeping.py >> /var/log/clawdeploy-housekeeping.log 2>&1"
+          job: "docker exec phoung-api-1 python housekeeping.py >> /var/log/phoung-housekeeping.log 2>&1"
 
     - name: Build sub-agent image
-      command: docker build -t clawdeploy/subagent:latest ./subagent
+      command: docker build -t phoung/subagent:latest ./subagent
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
 ```
 
 **Deploy command:**
@@ -1039,7 +1039,7 @@ docker compose up -d
 ## File Structure — Final
 
 ```
-clawdeploy-v2/
+phoung-v2/
 ├── main-agent/
 │   ├── agent.py              # Core agent loop (~200 lines)
 │   ├── pi_client.py          # Pi API wrapper (swappable)
@@ -1060,7 +1060,7 @@ clawdeploy-v2/
 │   ├── conversations/
 │   │   └── inbox/            # New chats land here, daily cron sorts them
 │   ├── projects/
-│   │   ├── clawdeploy/
+│   │   ├── phoung/
 │   │   │   ├── context.md    # Full project context
 │   │   │   ├── memories/     # Project-specific memories
 │   │   │   ├── conversations/ # Sorted conversation history

@@ -1,4 +1,4 @@
-# Multi-stage build for ClawDeploy Dashboard
+# Multi-stage build for Phoung Dashboard
 
 FROM node:20-alpine AS builder
 

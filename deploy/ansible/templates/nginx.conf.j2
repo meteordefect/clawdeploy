@@ -1,4 +1,4 @@
-# ClawDeploy Nginx Configuration
+# Phoung Nginx Configuration
 #
 # Dashboard access: SSH tunnel only (localhost:8080)
 #   ssh -N -L 8080:127.0.0.1:8080 root@{{ domain }}
@@ -68,8 +68,8 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
-    access_log /var/log/nginx/clawdeploy-tunnel-access.log;
-    error_log /var/log/nginx/clawdeploy-tunnel-error.log;
+    access_log /var/log/nginx/phoung-tunnel-access.log;
+    error_log /var/log/nginx/phoung-tunnel-error.log;
 }
 
 limit_req_zone $binary_remote_addr zone=agent_api:10m rate=10r/s;
@@ -132,6 +132,6 @@ server {
         return 403;
     }
 
-    access_log /var/log/nginx/clawdeploy-public-access.log;
-    error_log /var/log/nginx/clawdeploy-public-error.log;
+    access_log /var/log/nginx/phoung-public-access.log;
+    error_log /var/log/nginx/phoung-public-error.log;
 }

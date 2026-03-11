@@ -1,7 +1,7 @@
 {
-  "name": "clawdeploy-control-api",
+  "name": "phoung-control-api",
   "version": "3.0.0",
-  "description": "ClawDeploy Control API - PostgreSQL-backed API for dashboard and agents",
+  "description": "Phoung Control API - PostgreSQL-backed API for dashboard and agents",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

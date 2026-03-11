@@ -1,4 +1,4 @@
--- ClawDeploy v4 - Projects and Tasks
+-- Phoung v4 - Projects and Tasks
 -- Phase 1: Add projects and tasks tables; evolve events; keep old tables intact
 
 CREATE TABLE IF NOT EXISTS projects (

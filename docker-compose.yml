@@ -1,12 +1,14 @@
 services:
   api:
     build: ./main-agent
-    container_name: clawdeploy-api
+    container_name: phoung-api
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./memory:/app/memory
+      - ./repos:/app/repos
+      - /tmp/clawdeploy-workspaces:/tmp/clawdeploy-workspaces
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: .env
     healthcheck:
@@ -23,7 +25,7 @@ services:
       context: ./review-ui
       args:
         VITE_API_URL: /api
-    container_name: clawdeploy-ui
+    container_name: phoung-ui
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:80"
@@ -35,7 +37,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: clawdeploy-nginx
+    container_name: phoung-nginx
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"

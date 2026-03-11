@@ -12,7 +12,7 @@ DevOpsTasks — AI agent orchestration platform. A main Pi agent manages tasks, 
 - GitHub PRs as the code review interface
 
 ## Repo
-github.com/marten/clawdeploy
+github.com/marten/phoung
 
 ## Key files
 - /main-agent/agent.py — core agent loop

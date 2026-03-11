@@ -67,7 +67,7 @@ for t in active:
           curl -s -X PATCH "${CONTROL_API_URL}/api/tasks/${TASK_ID}" \
             -H "Content-Type: application/json" \
             -d "{\"pr_number\": ${PR_NUM}, \"pr_url\": \"${PR_URL}\", \"status\": \"pr_open\"}" > /dev/null || true
-          notify "ClawDeploy: PR #${PR_NUM} opened for task: ${TITLE}"
+          notify "Phoung: PR #${PR_NUM} opened for task: ${TITLE}"
           STATUS="pr_open"
           PR_NUMBER="$PR_NUM"
         fi
@@ -107,7 +107,7 @@ else: print('pending')
         -d "{\"ci_status\": \"${CI_STATUS}\", \"status\": \"${NEW_STATUS}\"}" > /dev/null || true
 
       if [ "$CI_STATUS" = "passing" ]; then
-        notify "ClawDeploy: PR #${PR_NUMBER} is ready for review — ${TITLE}"
+        notify "Phoung: PR #${PR_NUMBER} is ready for review — ${TITLE}"
       fi
     fi
 

@@ -49,7 +49,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 async function startServer() {
   try {
-    console.log('ClawDeploy Control API v4.0');
+    console.log('Phoung Control API v4.0');
     console.log('Running database migrations...');
     await runMigrations();
     

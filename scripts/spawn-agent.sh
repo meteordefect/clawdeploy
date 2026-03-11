@@ -120,7 +120,7 @@ Instructions:
 ${TASK_INSTRUCTIONS}
 - Run tests if a test command is available (e.g. npm test, pytest).
 - Commit your changes with a clear commit message.
-- After committing, run: gh pr create --title \"${DESCRIPTION:0:72}\" --body \"Automated PR by ClawDeploy task ${TASK_ID}\" --base ${DEFAULT_BRANCH}
+- After committing, run: gh pr create --title \"${DESCRIPTION:0:72}\" --body \"Automated PR by Phoung task ${TASK_ID}\" --base ${DEFAULT_BRANCH}
 - When done, exit.
 
 Constraints — do NOT violate these:

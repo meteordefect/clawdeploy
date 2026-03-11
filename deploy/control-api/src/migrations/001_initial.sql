@@ -1,4 +1,4 @@
--- ClawDeploy v3 - Initial Schema
+-- Phoung v3 - Initial Schema
 -- PostgreSQL 16
 
 -- Agents: remote OpenClaw instances that check in

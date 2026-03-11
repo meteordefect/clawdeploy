@@ -1,7 +1,7 @@
 {
-  "name": "clawdeploy-dashboard",
+  "name": "phoung-dashboard",
   "version": "3.0.0",
-  "description": "ClawDeploy Dashboard - Control plane web UI",
+  "description": "Phoung Dashboard - Control plane web UI",
   "type": "module",
   "scripts": {
     "dev": "vite",

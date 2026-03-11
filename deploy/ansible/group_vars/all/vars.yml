@@ -1,9 +1,9 @@
 ---
-# ClawDeploy v3 Ansible Variables
+# Phoung v3 Ansible Variables
 
 # Project settings
-project_name: clawdeploy
-project_dir: /opt/clawdeploy
+project_name: phoung
+project_dir: /opt/phoung
 compose_file: "{{ project_dir }}/docker-compose.yml"
 env_file: "{{ project_dir }}/.env"
 

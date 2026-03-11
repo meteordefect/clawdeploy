@@ -3,6 +3,7 @@ import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import * as spawner from "./spawner.js";
 import * as memory from "./memory.js";
 import * as github from "./github.js";
+import * as repos from "./repos.js";
 
 export const spawnSubagentTool: ToolDefinition = {
   name: "spawn_subagent",
@@ -17,17 +18,18 @@ export const spawnSubagentTool: ToolDefinition = {
     prompt: Type.String({ description: "Detailed coding instructions for the sub-agent" }),
     agent_type: Type.Optional(Type.String({ description: "Agent type: pi (default), claude, or codex" })),
     model: Type.Optional(Type.String({ description: "LLM model override for the sub-agent, e.g. zai/glm-4, kimi-coding/kimi-k2.5, anthropic/claude-sonnet-4-20250514. Defaults to SUBAGENT_MODEL env var." })),
+    context_files: Type.Optional(Type.Array(Type.String(), { description: "Additional memory file paths to inject into the workspace for this task" })),
   }),
   execute: async (_toolCallId, params) => {
-    const { task_id, project, prompt, agent_type, model } = params as {
-      task_id: string; project: string; prompt: string; agent_type?: string; model?: string;
+    const { task_id, project, prompt, agent_type, model, context_files } = params as {
+      task_id: string; project: string; prompt: string; agent_type?: string; model?: string; context_files?: string[];
     };
     memory.createTask(task_id, project, prompt);
     memory.appendTaskActivity(task_id, {
       type: "phoung_note",
       message: `Spawning sub-agent for: ${prompt.slice(0, 120)}`,
     });
-    await spawner.spawn(task_id, project, prompt, agent_type || "pi", model);
+    await spawner.spawn(task_id, project, prompt, agent_type || "pi", model, context_files);
     return {
       content: [{ type: "text", text: `Sub-agent spawned for task ${task_id} in project ${project}.` }],
       details: {},
@@ -141,6 +143,55 @@ export const createMemoryTool: ToolDefinition = {
   },
 };
 
+export const registerProjectTool: ToolDefinition = {
+  name: "register_project",
+  label: "Register Project",
+  description:
+    "Register a new project by cloning its repo locally and setting up the memory structure. " +
+    "Use this when Marten mentions a new project or repo that isn't tracked yet.",
+  parameters: Type.Object({
+    name: Type.String({ description: "Project name (used as folder name)" }),
+    repo_url: Type.String({ description: "GitHub repo URL, e.g. https://github.com/owner/repo" }),
+    description: Type.Optional(Type.String({ description: "Brief project description" })),
+    stack: Type.Optional(Type.String({ description: "Tech stack summary" })),
+  }),
+  execute: async (_toolCallId, params) => {
+    const { name, repo_url, description, stack } = params as {
+      name: string; repo_url: string; description?: string; stack?: string;
+    };
+    try {
+      repos.cloneRepo(name, repo_url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: "text", text: `Failed to clone repo: ${msg}` }], details: {} };
+    }
+
+    const contextMd = [
+      `# ${name} — Project Context\n`,
+      `## Repo\n${repo_url}\n`,
+      description ? `## What is this\n${description}\n` : "",
+      stack ? `## Tech stack\n${stack}\n` : "",
+      `## Recent memories\nNone yet.\n`,
+    ].filter(Boolean).join("\n");
+
+    memory.createMemory(`${name}-registered`, `Registered project ${name}`, ["project", "registration"], `Registered project ${name} from ${repo_url}`, "general");
+
+    const memDir = memory.getMemoryDir();
+    const projectDir = `${memDir}/projects/${name}`;
+    const { mkdirSync, existsSync, writeFileSync } = await import("node:fs");
+    for (const sub of ["memories", "conversations", "tasks/active", "tasks/completed"]) {
+      const dir = `${projectDir}/${sub}`;
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(`${projectDir}/context.md`, contextMd);
+
+    return {
+      content: [{ type: "text", text: `Project "${name}" registered. Repo cloned and memory structure created.` }],
+      details: {},
+    };
+  },
+};
+
 export const allTools: ToolDefinition[] = [
   spawnSubagentTool,
   listTasksTool,
@@ -148,4 +199,5 @@ export const allTools: ToolDefinition[] = [
   askHumanTool,
   checkPrsTool,
   createMemoryTool,
+  registerProjectTool,
 ];

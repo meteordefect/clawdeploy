@@ -49,20 +49,20 @@
 
     - name: Ensure deploy directory exists
       file:
-        path: /opt/clawdeploy
+        path: /opt/phoung
         state: directory
         mode: '0755'
 
     - name: Stop old v1 stack if running
       command: docker compose down --remove-orphans
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
       ignore_errors: yes
 
     - name: Sync project files from repo root
       synchronize:
         src: "{{ playbook_dir }}/../../../"
-        dest: /opt/clawdeploy/
+        dest: /opt/phoung/
         rsync_opts:
           - "--exclude=.git"
           - "--exclude=node_modules"
@@ -84,7 +84,7 @@
 
     - name: Generate environment file with required variables
       copy:
-        dest: /opt/clawdeploy/.env
+        dest: /opt/phoung/.env
         content: |
           # Kimi For Coding (pi-mono provider: kimi-coding)
           KIMI_API_KEY={{ lookup('env', 'KIMI_API_KEY') | default(lookup('env', 'MOONSHOT_API_KEY'), true) | default('', true) }}
@@ -103,10 +103,15 @@
 
           # Sub-agent
           SUBAGENT_MODEL={{ lookup('env', 'SUBAGENT_MODEL') | default('zai/glm-4', true) }}
-          SUBAGENT_IMAGE=clawdeploy/subagent:latest
+          SUBAGENT_IMAGE=phoung/subagent:latest
           SUBAGENT_MEMORY_LIMIT=2g
           SUBAGENT_CPUS=2
           MAX_CONCURRENT_SUBAGENTS=3
+
+          # Repos & workspaces
+          REPOS_DIR=/app/repos
+          WORKSPACES_DIR=/tmp/clawdeploy-workspaces
+          SUBAGENT_RUNTIME=runsc
 
           # API
           API_HOST=0.0.0.0
@@ -117,32 +122,80 @@
     - name: Build and start v2 services
       command: docker compose up -d --build
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
 
     - name: Build sub-agent image
-      command: docker build -t clawdeploy/subagent:latest ./subagent
+      command: docker build -t phoung/subagent:latest ./subagent
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
+
+    - name: Install gVisor (runsc)
+      shell: |
+        set -e
+        if command -v runsc &>/dev/null; then
+          echo "gVisor already installed"
+          exit 0
+        fi
+        ARCH=$(uname -m)
+        URL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"
+        wget -q "${URL}/runsc" "${URL}/containerd-shim-runsc-v1" -P /tmp/gvisor/
+        install -o root -g root -m 0755 /tmp/gvisor/runsc /usr/local/bin/
+        install -o root -g root -m 0755 /tmp/gvisor/containerd-shim-runsc-v1 /usr/local/bin/
+        rm -rf /tmp/gvisor
+      args:
+        creates: /usr/local/bin/runsc
+
+    - name: Configure Docker to use gVisor runtime
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "runtimes": {
+              "runsc": {
+                "path": "/usr/local/bin/runsc"
+              }
+            }
+          }
+        mode: '0644'
+      register: docker_daemon_config
+
+    - name: Restart Docker if daemon config changed
+      service:
+        name: docker
+        state: restarted
+      when: docker_daemon_config.changed
+
+    - name: Ensure repos directory exists
+      file:
+        path: /opt/phoung/repos
+        state: directory
+        mode: '0755'
+
+    - name: Ensure workspaces directory exists
+      file:
+        path: /tmp/clawdeploy-workspaces
+        state: directory
+        mode: '0755'
 
     - name: Install hourly cron - wake Phoung
       cron:
-        name: "ClawDeploy hourly: wake Phoung"
+        name: "Phoung hourly: wake Phoung"
         minute: "0"
         hour: "*"
-        job: "curl -s -X POST http://127.0.0.1:8000/cron/wake >> /var/log/clawdeploy-cron.log 2>&1"
+        job: "curl -s -X POST http://127.0.0.1:8000/cron/wake >> /var/log/phoung-cron.log 2>&1"
 
     - name: Remove old Python cron jobs if present
       cron:
         name: "{{ item }}"
         state: absent
       loop:
-        - "ClawDeploy hourly: wake Pi"
-        - "ClawDeploy daily: housekeeping"
+        - "Phoung hourly: wake Pi"
+        - "Phoung daily: housekeeping"
 
     - name: Verify services are running
       command: docker compose ps
       args:
-        chdir: /opt/clawdeploy
+        chdir: /opt/phoung
       register: docker_ps
 
     - name: Show service status

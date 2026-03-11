@@ -95,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Top bar — project tabs */}
       <header className="sticky top-0 z-50 bg-card border-b border-border flex items-center px-4 gap-2 h-12 shrink-0">
-        <span className="font-serif font-bold text-primary text-base mr-3 hidden sm:block">ClawDeploy</span>
+        <span className="font-serif font-bold text-primary text-base mr-3 hidden sm:block">Phoung</span>
 
         {/* Project switcher tabs */}
         <div className="flex items-center gap-1 overflow-x-auto flex-1">
@@ -173,7 +173,7 @@ export function Layout({ children }: LayoutProps) {
             })}
           </nav>
           <div className="px-4 py-3 border-t border-border">
-            <p className="text-xs text-tertiary">ClawDeploy v4.0</p>
+            <p className="text-xs text-tertiary">Phoung v4.0</p>
           </div>
         </aside>
 

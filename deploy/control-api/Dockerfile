@@ -1,4 +1,4 @@
-# Multi-stage build for ClawDeploy Control API
+# Multi-stage build for Phoung Control API
 
 FROM node:20-alpine AS builder
 

@@ -35,6 +35,10 @@ function globMd(dir: string): string[] {
   return readdirSync(dir).filter(f => f.endsWith(".md")).sort().map(f => join(dir, f));
 }
 
+export function getMemoryDir(): string {
+  return MEMORY_DIR;
+}
+
 // --- Prompt / context loaders ---
 
 export function loadSystemPrompt(): string {

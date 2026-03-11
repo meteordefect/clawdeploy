@@ -1,5 +1,5 @@
 [control_plane]
-clawdeploy ansible_host=37.27.192.48
+phoung ansible_host=37.27.192.48
 
 [control_plane:vars]
 ansible_user=root

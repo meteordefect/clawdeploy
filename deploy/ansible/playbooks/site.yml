@@ -1,5 +1,5 @@
 ---
-- name: Deploy ClawDeploy Control Plane
+- name: Deploy Phoung Control Plane
   hosts: control_plane
   become: yes
   
@@ -127,14 +127,14 @@
     - name: Copy Nginx configuration
       template:
         src: ../templates/nginx.conf.j2
-        dest: /etc/nginx/sites-available/clawdeploy
+        dest: /etc/nginx/sites-available/phoung
         mode: '0644'
       notify: Reload Nginx
 
     - name: Enable Nginx site
       file:
-        src: /etc/nginx/sites-available/clawdeploy
-        dest: /etc/nginx/sites-enabled/clawdeploy
+        src: /etc/nginx/sites-available/phoung
+        dest: /etc/nginx/sites-enabled/phoung
         state: link
       notify: Reload Nginx
 

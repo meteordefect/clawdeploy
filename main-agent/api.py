@@ -190,9 +190,9 @@ def list_projects():
 
 
 KNOWN_CONTAINERS = {
-    "api": "clawdeploy-api",
-    "ui": "clawdeploy-ui",
-    "nginx": "clawdeploy-nginx",
+    "api": "phoung-api",
+    "ui": "phoung-ui",
+    "nginx": "phoung-nginx",
 }
 
 

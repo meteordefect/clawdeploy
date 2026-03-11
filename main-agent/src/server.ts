@@ -164,9 +164,9 @@ app.get("/projects", (_req, res) => {
 // --- Logs ---
 
 const KNOWN_CONTAINERS: Record<string, string> = {
-  api: "clawdeploy-api",
-  ui: "clawdeploy-ui",
-  nginx: "clawdeploy-nginx",
+  api: "phoung-api",
+  ui: "phoung-ui",
+  nginx: "phoung-nginx",
 };
 
 app.get("/logs", (_req, res) => {
@@ -240,6 +240,6 @@ app.post("/cron/wake", async (_req, res) => {
 
 export function startServer() {
   app.listen(API_PORT, API_HOST, () => {
-    console.log(`ClawDeploy API v3.0.0 listening on ${API_HOST}:${API_PORT}`);
+    console.log(`Phoung API v3.0.0 listening on ${API_HOST}:${API_PORT}`);
   });
 }

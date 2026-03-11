@@ -74,3 +74,6 @@ temp/
 
 # Memory logs (auto-generated)
 memory/logs/
+
+# Local repo clones (managed by Phoung)
+repos/

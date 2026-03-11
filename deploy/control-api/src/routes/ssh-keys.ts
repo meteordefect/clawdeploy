@@ -7,7 +7,7 @@ import * as os from 'os';
 const router = Router();
 
 const KEY_DIR = path.join(os.homedir(), '.ssh');
-const KEY_PATH = path.join(KEY_DIR, 'clawdeploy_agent');
+const KEY_PATH = path.join(KEY_DIR, 'phoung_agent');
 const PUB_PATH = `${KEY_PATH}.pub`;
 
 router.get('/ssh-key', async (req: Request, res: Response) => {
@@ -36,7 +36,7 @@ router.post('/ssh-key/generate', async (req: Request, res: Response) => {
     }
 
     execSync(
-      `ssh-keygen -t ed25519 -C "clawdeploy-agent" -f "${KEY_PATH}" -N ""`,
+      `ssh-keygen -t ed25519 -C "phoung-agent" -f "${KEY_PATH}" -N ""`,
       { stdio: 'pipe' }
     );
 
@@ -44,7 +44,7 @@ router.post('/ssh-key/generate', async (req: Request, res: Response) => {
 
     // Configure SSH to use this key for github.com if not already set
     const sshConfig = path.join(KEY_DIR, 'config');
-    const marker = '# clawdeploy-agent';
+    const marker = '# phoung-agent';
     const existingConfig = fs.existsSync(sshConfig) ? fs.readFileSync(sshConfig, 'utf-8') : '';
     if (!existingConfig.includes(marker)) {
       const block = `\n${marker}\nHost github.com\n  IdentityFile ${KEY_PATH}\n  AddKeysToAgent yes\n  StrictHostKeyChecking accept-new\n`;

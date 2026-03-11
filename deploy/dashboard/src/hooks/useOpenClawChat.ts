@@ -407,7 +407,7 @@ export function useOpenClawChat(gatewayUrl: string, gatewayToken: string, projec
                 scopes: ['operator.read', 'operator.write'],
                 client: {
                   id: clientIdRef.current,
-                  displayName: 'ClawDeploy Dashboard',
+                  displayName: 'Phoung Dashboard',
                   version: '1.0.0',
                   platform: 'web',
                   mode: 'webchat',

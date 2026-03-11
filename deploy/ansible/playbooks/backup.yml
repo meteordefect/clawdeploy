@@ -1,12 +1,12 @@
 ---
-- name: Backup ClawDeploy Data
+- name: Backup Phoung Data
   hosts: control_plane
   become: yes
   
   vars:
     backup_dir: /root/backups
     timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
-    backup_file: "clawdeploy-backup-{{ timestamp }}.tar.gz"
+    backup_file: "phoung-backup-{{ timestamp }}.tar.gz"
   
   tasks:
     - name: Create backup directory
@@ -17,7 +17,7 @@
 
     - name: Dump PostgreSQL database
       shell: >
-        docker exec clawdeploy-postgres pg_dump 
+        docker exec phoung-postgres pg_dump 
         -U {{ lookup('env', 'POSTGRES_USER') }} 
         {{ lookup('env', 'POSTGRES_DB') }} 
         > {{ backup_dir }}/postgres-{{ timestamp }}.sql

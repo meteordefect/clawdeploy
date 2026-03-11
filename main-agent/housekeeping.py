@@ -88,11 +88,11 @@ def collect_subagent_logs():
 
     stopped = client.containers.list(
         all=True,
-        filters={"label": "clawdeploy.type=subagent", "status": "exited"},
+        filters={"label": "phoung.type=subagent", "status": "exited"},
     )
     for container in stopped:
-        task_id = container.labels.get("clawdeploy.task", "")
-        run_str = container.labels.get("clawdeploy.run", "")
+        task_id = container.labels.get("phoung.task", "")
+        run_str = container.labels.get("phoung.run", "")
         if not task_id or not run_str:
             container.remove(force=True)
             continue

@@ -1,17 +1,13 @@
 #!/bin/bash
 set -e
 
-mkdir -p /workspace
 cd /workspace
 
-echo "$PROMPT_B64" | base64 -d > /workspace/prompt.txt
-PROMPT="$(cat /workspace/prompt.txt)"
+echo "$PROMPT_B64" | base64 -d > /tmp/prompt.txt
+PROMPT="$(cat /tmp/prompt.txt)"
 
-git clone "https://x-access-token:${GITHUB_TOKEN}@${REPO_URL#https://}" repo && cd repo
-
-git config user.name "ClawDeploy Agent"
-git config user.email "agent@clawdeploy.local"
-git checkout -b "$BRANCH"
+git config user.name "Phoung Agent"
+git config user.email "agent@phoung.local"
 
 if [ "$AGENT_TYPE" = "pi" ] || [ -z "$AGENT_TYPE" ]; then
     MODEL_FLAG=""
@@ -35,13 +31,3 @@ if git diff --cached --quiet; then
 fi
 
 git commit -m "task($TASK_ID): automated changes"
-git push origin "$BRANCH"
-
-TITLE="$(echo "$PROMPT" | head -c 60)"
-gh pr create \
-    --title "[$TASK_ID] $TITLE" \
-    --body "Automated PR from sub-agent.
-
-Task: $TASK_ID
-Agent: $AGENT_TYPE
-Model: ${SUBAGENT_MODEL:-default}"
